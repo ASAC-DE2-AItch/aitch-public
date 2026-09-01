@@ -1,0 +1,198 @@
+# =============================================================================
+# config/kb_schema.yaml — KB(Qdrant 벡터) 5컬렉션 저작·적재 계약 (단일 소스)
+# -----------------------------------------------------------------------------
+# 정본: "KB 5컬렉션 스키마 레퍼런스 v1" (2026-07-07)
+# 역할:
+#   1) JSONL 저작 가이드  — 각 컬렉션이 채워야 할 필드/enum 명세
+#   2) qdrant_init 소비    — collections + payload_indexes + 임베딩(dense/sparse) 설정
+#   3) qdrant_ingest 소비  — common_payload/enum 검증 후 적재
+# 원칙: KB = 근거 서사 + 의미검색 · Postgres = 정밀 수치 + 정확 필터 + 통계 + 감사
+# 규약: 임베딩 모델/청킹 변경 = 새 컬렉션 버전(v2) (CLAUDE.md 4-2). 기존 컬렉션 덮어쓰기 금지.
+# =============================================================================
+
+version: v1   # 청킹/필드 스키마 개정 시 v2 → 컬렉션 물리명에 반영
+
+# -----------------------------------------------------------------------------
+# 임베딩 — hybrid(dense+sparse). bge-m3를 기본으로 고른 이유가 하이브리드 강점.
+#   dense  : 의미 유사도 (Cosine)
+#   sparse : 어휘 매칭 (C코드·에러코드·파라미터ID 같은 정확 토큰에 강함)
+# 물리 컬렉션명 규칙: <collection>__<model_slug>__<version>  (모델 교체 시 세트로 변경)
+#   예) historical_case__bge_m3__v1
+# 후보는 벤치(hit@k) 후 확정 — 모델을 바꾸면 registry의 dims/distance가 세트로 따라감.
+# -----------------------------------------------------------------------------
+embedding:
+  # 운영 단일 소스 — params.yaml D7(llm.embedding_model)은 이 값을 미러링한다.
+  mode: hybrid              # ✅확정 hybrid(dense+sparse) — sparse가 C코드·에러코드 정확매칭에 이점
+  model: BAAI/bge-m3        # ✅확정(2026-07-09 벤치 5컬렉션 47문항: MRR 0.901·hit@3 0.96 1위). KORPatent(0.808)·Qwen3-4B(0.887·4096dim) 대비 우위
+  text_field: text          # 임베딩 대상 = 공통 payload의 text (청크 원문). 전 컬렉션 동일.
+  registry:                 # 모델별 벡터 스펙 (HF id 기준 — compare_embed_models.py와 정합). 교체 시 이 표만 갱신
+    BAAI/bge-m3:             {dense_dims: 1024, distance: Cosine, sparse: true}   # 기본 — dense+sparse hybrid
+    sttempler/KORPatent-BGE: {dense_dims: 1024, distance: Cosine, sparse: false}  # bge-m3 fine-tune, dense-only
+    Qwen/Qwen3-Embedding-8B: {dense_dims: 4096, distance: Cosine, sparse: false}  # dense-only. 변형별 dims: 0.6B=1024·4B=2560·8B=4096
+  qdrant:
+    dense_vector_name: dense
+    sparse_vector_name: sparse   # mode=hybrid일 때만 컬렉션에 sparse config 생성
+
+# -----------------------------------------------------------------------------
+# enum 고정 값 — 저작·적재 시 이 값만 허용 (오타/표기 흔들림 차단)
+# -----------------------------------------------------------------------------
+enums:
+  # Qdrant 벡터 KB = 3컬렉션 (2026-07-10). limit_change_log·recipe_r2r_log는 Postgres 전용으로 전환
+  #   → kb_type(벡터 문서 유형) 아님. 로그는 historical_case 페이로드의 incident_id로 Postgres 조회.
+  kb_type: [error_manual, process_knowledge, historical_case]
+  provenance: [manual, pm_anchored, domain_case, simulator, synthetic_seed, data_dictionary, concept_note]  # data_dictionary=train_data.csv 데이터 사전 유래(센서 정의 카드) · concept_note=DRAM 개념노트(표준지식 기반 생성)
+  confidence_grade: ["✅", "🔶", "❓"]   # process_knowledge 전용
+  # 근본원인 대응 조치 (Supervisor 4지선다에 정렬 — 기획서 v4.5 line 629).
+  #   recipe_r2r=②공정조건 이탈 · limit_correction=③기준선 노후 · maintenance=①진짜 장비이상 · escalation=④모두 아님
+  #   monitor=고정 조치목록(v4.5 line 637). ct_trigger는 조치옵션 아님(별도 CT 재학습 루프) → 제외.
+  action_type: [recipe_r2r, limit_correction, maintenance, monitor, escalation]
+  # 웨이퍼 처분 — action_type과 별개 축 (동시 발생). 정밀 이력은 Postgres wafer_dispositions.
+  wafer_disposition: [scrap, release, hold, none]
+
+# -----------------------------------------------------------------------------
+# 공통 payload (12필드) — 벡터 3컬렉션 공유 봉투
+#   type 표기: str | float | ts | enum | nullable(x)
+#   ⚠️ 2026-07-10 상위법(db/init.sql) 정렬:
+#     · 죽은 chamber·rule_id 삭제 — 전건 null이고 db 어느 테이블에도 근거 없음(rule_id는 spc_violations 것).
+#     · historical_case(event)는 db historical_cases 정본(chamber_id·sensor_id·nelson_rule)을 payload에서 직접 보유.
+#     · equipment/sensor/pm_proximity는 db 미규정 Qdrant 전용 필터 → kb_schema 재량 유지(사용 컬렉션만).
+# -----------------------------------------------------------------------------
+common_payload:
+  doc_id:       {type: str,   desc: "rag_documents FK"}
+  chunk_id:     {type: str,   desc: "청크 ID"}
+  kb_type:      {type: enum,  enum: kb_type}
+  text:         {type: str,   desc: "임베딩 대상(청크 원문/서사)"}
+  title:        {type: str}
+  source:       {type: str,   desc: "출처"}
+  section_page: {type: str,   desc: "원문 위치(페이지·슬라이드)"}
+  equipment:    {type: str,   index: true, nullable: true, desc: "error_manual·process_knowledge에서 사용 (historical_case 미보유)"}
+  sensor:       {type: str,   index: true, nullable: true, desc: "C코드 센서(예: C11) — process_knowledge SHAP 지목 센서. historical_case는 sensor_id(db 정본) 사용"}
+  pm_proximity: {type: str,   index: true, nullable: true, desc: "PM 근접도(str|float) — historical_case에서 사용"}
+  provenance:   {type: enum,  enum: provenance}
+  created_at:   {type: ts}
+
+# qdrant_init이 생성할 payload 인덱스 (필터 대상). chamber_id는 historical_case 전용 필드.
+payload_indexes: [kb_type, equipment, sensor, pm_proximity, chamber_id]
+
+# -----------------------------------------------------------------------------
+# Qdrant 벡터 컬렉션 = 3종 (2026-07-10 개정): error_manual · process_knowledge · historical_case.
+# 관계: 사건형(historical_case)만 벡터 검색. 로그형(limit/recipe)은 Qdrant에 넣지 않고
+#       Postgres(limit_corrections·recipe_corrections)에 저장 → 벡터 히트의 incident_id로 조회(페어링).
+#       ⇒ 로그 스키마는 아래 postgres_only 섹션 참조. HC가 부모가 아님(형제 관계, incident_id 공유).
+# -----------------------------------------------------------------------------
+collections:
+
+  # 1) 지식형 — 상황 무관 지식
+  error_manual:
+    kind: knowledge
+    purpose: "장비 에러코드·정비 조치 검색 (옵션③ 정비 근거)"
+    id_field: manual_id            # ID 포맷: MAN-<DOC>-<SEQ> (헌법 6-4 접두사 MAN)
+    postgres: rag_documents        # 메타만
+    payload:
+      manual_id:         {type: str, desc: "엔트리 ID MAN-<DOC>-<SEQ>"}
+      error_code:        {type: str, desc: "fault 분류 코드 ERR-<유형> (시뮬레이션 taxonomy · fault 엔트리만)"}
+      symptom:           {type: str}
+      cause:             {type: str}
+      corrective_action: {type: str}
+      part:              {type: str}
+      severity:          {type: str}
+
+  process_knowledge:
+    kind: knowledge
+    purpose: "센서→원인 공정지식 + recipe 파라미터→효과 지식 (원인추론·옵션① 근거)"
+    id_field: knowledge_id
+    postgres: rag_documents
+    lookup_complement: sensor_mapping.json   # 표 원본 청킹 금지 — 센서 오검색 방지
+    payload:
+      sensor:           {type: str}
+      sensor_name:      {type: str}
+      physical_meaning: {type: str}
+      cause_effect:     {type: str}
+      direction:        {type: str}
+      confidence_grade: {type: enum, enum: confidence_grade}
+      related_step:     {type: str}
+      card_type:        {type: str}
+
+  # 2) 사건형 — 유사 사건 검색(4지선다 판단 참조)
+  historical_case:
+    kind: event
+    purpose: "유사 사건 검색 — 조치 고르기 전 판단(4지선다) 참조"
+    id_field: case_id              # ID 포맷: CASE-*  (incident_id: INC-*)
+    postgres: historical_cases     # 성공률 통계·KPI 집계
+    payload:
+      incident_id:                          {type: str, desc: "페어링 키 — Postgres 로그(limit/recipe) 조회용. 신규 데이터엔 없어 발번 필수"}
+      case_id:                              {type: str}
+      chamber_id:                           {type: str, index: true, desc: "SIM_CH_1~6 — db historical_cases.chamber_id 정본 (구 공통 chamber 대체, 2026-07-10)"}
+      sensor_id:                            {type: str, desc: "C코드 센서 (신규 데이터 필드명 = sensor_id — 구 공통 sensor 대체)"}
+      nelson_rule:                          {type: str, nullable: true, desc: "Nelson N1~N8 (구 공통 rule_id 대체)"}
+      action_type:                          {type: enum, enum: action_type, desc: "근본원인 대응 (4지선다) — 신규의 recipe_tuning/limit_reset/wafer_scrap은 적재 시 정규화"}
+      action_taken:                         {type: str}
+      wafer_disposition:                    {type: enum, enum: wafer_disposition, nullable: true, desc: "영향 웨이퍼 처분(요약) — action_type과 별개 축. 신규의 wafer_scrap→action=maintenance+disposition=scrap로 분리"}
+      delta_pct:                            {type: float, nullable: true}
+      outcome_false_alarm_reduction_pct:    {type: float, nullable: true}
+      outcome_missed_detection:             {type: bool,  nullable: true}
+      is_success:                           {type: bool, nullable: true, desc: "monitor·escalation은 성공 판정 대상 아님 → null"}
+      is_seed:                              {type: bool, nullable: true, desc: "시드 여부 (신규 데이터 필드)"}
+      # trigger_signal·root_cause·data_basis 제거 (2026-07-10): 신규 데이터 결여·소비 코드 없음.
+      #   기능 대체 — trigger_signal→nelson_rule, root_cause→narrative+pattern, data_basis→provenance(synthetic_seed)
+      # ── 신규 데이터(cases_synthetic_v1) 신호 축 (2026-07-10 추가) ──
+      pattern:                              {type: str, nullable: true, desc: "SPC 패턴: level_shift/spike/oscillation/drift_fast/drift_slow/post_pm_gap"}
+      cycle_phase:                          {type: str, nullable: true, desc: "PM 사이클 위상: early/mid/late"}
+      magnitude_sigma:                      {type: float, nullable: true, desc: "이탈 강도(연속 σ, 1.0~4.0)"}
+
+# -----------------------------------------------------------------------------
+# Postgres 전용 (조치로그형) — Qdrant에 넣지 않음 (2026-07-10 개정).
+#   벡터 임베딩(text) 불필요. historical_case 벡터 히트의 incident_id로 아래 테이블을 조회(페어링).
+#   적재: db/init.sql 테이블에 직접 INSERT (seed jsonl = 로더 소스, ingest 대상 아님).
+# -----------------------------------------------------------------------------
+postgres_only:
+
+  # 조치로그① — incident_id로 사건과 연결
+  limit_change_log:
+    kind: action_log
+    purpose: "실력치(관리한계) 재설정 근거·이력 (옵션② precedent)"
+    id_field: correction_id        # ID 포맷: LIM-*
+    postgres: limit_corrections    # center/ucl/lcl·섀도 평가
+    payload:
+      incident_id:                        {type: str}
+      correction_id:                      {type: str}
+      sensor_window:                      {type: str}
+      limit_version_before:               {type: str}
+      limit_version_after:                {type: str}
+      center_before:                      {type: float}
+      center_after:                       {type: float}
+      delta_pct:                          {type: float}
+      trigger_type:                       {type: str, desc: "periodic|incident"}
+      calc_window_n:                      {type: int}
+      rationale:                          {type: str}
+      shadow_false_alarm_reduction_pct:   {type: float, nullable: true}
+      shadow_missed_detection:            {type: str,   nullable: true}
+
+  # 조치로그② — incident_id로 사건과 연결
+  recipe_r2r_log:
+    kind: action_log
+    purpose: "검증된 recipe setpoint 튜닝 사례 (옵션① 값 결정 근거)"
+    id_field: recipe_correction_id  # ID 포맷: (recipe correction)
+    postgres: recipe_corrections    # setpoint 수치·verify·상태 PROPOSED→VERIFIED
+    payload:
+      incident_id:           {type: str}
+      recipe_correction_id:  {type: str}
+      recipe_id:             {type: str}
+      step:                  {type: str}
+      parameter_id:          {type: str, desc: "튜닝 손잡이 C코드 — process_knowledge ③축 tuning_axis 체계 준수"}
+      tuning_direction:      {type: str}
+      delta_pct:             {type: float}
+      shap_basis:            {type: str}
+      expected_effect:       {type: str}
+      observed_effect:       {type: str, nullable: true}
+      is_success:            {type: bool, nullable: true}   # outcome
+
+# -----------------------------------------------------------------------------
+# rag_documents (레지스트리 / 브리지) — Postgres
+#   벡터 3컬렉션 문서 메타. 논리 kb_type(3) ↔ 물리 qdrant_collection(3) 매핑.
+#   컬럼: doc_id, kb_type, title, source, qdrant_collection (VARCHAR — CHECK 제약 없음).
+#   ※ 로그(limit/recipe)는 벡터 아님 → rag_documents 대상 아님(각자 corrections 테이블).
+# -----------------------------------------------------------------------------
+registry:
+  postgres_table: rag_documents
+  maps: "kb_type(논리 3) ↔ qdrant_collection(물리 3)"

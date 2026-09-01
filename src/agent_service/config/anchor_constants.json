@@ -1,0 +1,305 @@
+{
+  "_meta": {
+    "purpose": "센서별 정착 앵커 상수 — mock alert(fixtures)·리포트 서술의 결정적 수치 소스",
+    "generated_by": "src/agent_service/scripts/build_anchor_constants.py",
+    "inputs": [
+      "config/chamber_offsets.json (sensor_std=fleet_std)",
+      "docs/데이터_사전_v1.md v3 (center 정착 관측)",
+      "docs/API_Contract_명세서.md §3 (C11 예시 seed)"
+    ],
+    "caveats": [
+      "settled_std 는 잠정값(confidence=provisional/seeded) — B 실력치 초기화(B3-1)에서 교체.",
+      "fleet_std(전 레짐 합산)를 정착 관리한계 계산에 직접 쓰지 말 것(폭 비현실).",
+      "판정은 C코드 사용 — name(표시명)은 서술 계층 전용(헌법 6-4)."
+    ],
+    "chamber_offset_seed": 42
+  },
+  "sensors": {
+    "C1": {
+      "name": "RF_Power_Set",
+      "center": 118.0,
+      "settled_std": 2.0,
+      "fleet_std": 46.584011,
+      "window": "settled",
+      "confidence": "seeded",
+      "provenance": {
+        "center": "데이터 사전 v3(step1·4=118) — setpoint(손잡이)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C11": {
+      "name": "DC_Bias",
+      "center": -310.0,
+      "settled_std": 10.0,
+      "fleet_std": 143.214018,
+      "window": "settled",
+      "confidence": "seeded",
+      "provenance": {
+        "center": "API Contract §3 예시(center -310, 한계 ±30)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C12": {
+      "name": "DC_Bias_Ref",
+      "center": -320.0,
+      "settled_std": 8.0,
+      "fleet_std": 12.588913,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(C11 피크 연동 기준값) — 레짐 신호(손잡이 아님)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C15": {
+      "name": "Gas_A",
+      "center": 164.0,
+      "settled_std": 5.0,
+      "fleet_std": 79.356575,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(step4 164)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C16": {
+      "name": "Gas_B_Actual",
+      "center": 1576.0,
+      "settled_std": 50.0,
+      "fleet_std": 627.63017,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(레벨 1576)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C17": {
+      "name": "Chamber_Temp",
+      "center": 200.0,
+      "settled_std": 6.0,
+      "fleet_std": 79.882275,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(프로파일 107→248 대표값) — 레짐 신호",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C18": {
+      "name": "Match_Transient",
+      "center": 0.05,
+      "settled_std": 0.5,
+      "fleet_std": 2.505695,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 후 0.04)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C25": {
+      "name": "Baseline_Drift",
+      "center": -0.055,
+      "settled_std": 0.003,
+      "fleet_std": 0.006626,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(-0.055 부근 · 노후도 보조)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C27": {
+      "name": "Match_Residual",
+      "center": 1.0,
+      "settled_std": 2.0,
+      "fleet_std": 48.393269,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 후 소값)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C31": {
+      "name": "RF_Forward",
+      "center": 290.0,
+      "settled_std": 8.0,
+      "fleet_std": 134.211241,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 282→299)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C32": {
+      "name": "RF_Reflect",
+      "center": 1.5,
+      "settled_std": 1.0,
+      "fleet_std": 65.415389,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 99.4% ≤3)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C4": {
+      "name": "Gas_Set_A",
+      "center": 40.0,
+      "settled_std": 1.0,
+      "fleet_std": 18.760457,
+      "window": "settled",
+      "confidence": "seeded",
+      "provenance": {
+        "center": "데이터 사전 v3(C6_0=40) — setpoint(손잡이)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C48": {
+      "name": "Gas_B_Set",
+      "center": 1576.0,
+      "settled_std": 40.0,
+      "fleet_std": 627.629759,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 고정 1576) — setpoint",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C5": {
+      "name": "Gas_Set_B",
+      "center": 71.0,
+      "settled_std": 1.5,
+      "fleet_std": 32.730747,
+      "window": "settled",
+      "confidence": "seeded",
+      "provenance": {
+        "center": "데이터 사전 v3(C6_0=71) — setpoint(손잡이)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C54": {
+      "name": "Match_A",
+      "center": 0.0,
+      "settled_std": 60.0,
+      "fleet_std": 559.037999,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(±대칭 준고정 위치값)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C56": {
+      "name": "Match_B",
+      "center": 0.0,
+      "settled_std": 60.0,
+      "fleet_std": 593.934723,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(±대칭 준고정 위치값)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C57": {
+      "name": "He_Valve",
+      "center": 11.0,
+      "settled_std": 1.0,
+      "fleet_std": 4.672647,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(median 11)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C58": {
+      "name": "He_Pressure",
+      "center": 11.98,
+      "settled_std": 0.3,
+      "fleet_std": 0.260193,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(median 11.98~11.99)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C61": {
+      "name": "RF_Vneg",
+      "center": -1090.0,
+      "settled_std": 35.0,
+      "fleet_std": 649.855904,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 |1090| 유지)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C62": {
+      "name": "RF_Vpp",
+      "center": 1800.0,
+      "settled_std": 55.0,
+      "fleet_std": 2586.817831,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(정착 +1800)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C63": {
+      "name": "Aux_63",
+      "center": 224.0,
+      "settled_std": 12.0,
+      "fleet_std": 202.74517,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(step4 내 190→224)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    },
+    "C9": {
+      "name": "Temp_Aux",
+      "center": 195.0,
+      "settled_std": 6.0,
+      "fleet_std": 23.137678,
+      "window": "settled",
+      "confidence": "provisional",
+      "provenance": {
+        "center": "데이터 사전 v3(C17 동행 열거동)",
+        "settled_std": "잠정 — 정착 σ 확정 소스 없음(B3-1 산출 시 교체). |center| 소수%·Contract §3 기준",
+        "fleet_std": "config/chamber_offsets.json sensor_std (실데이터, 확정)"
+      }
+    }
+  }
+}

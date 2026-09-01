@@ -1,0 +1,8 @@
+{
+ "method": "ewma_level",
+ "alpha": 0.05,
+ "alarm_level": 0.2,
+ "baseline_B0": 0.13011934584109647,
+ "formula": "clip((EWMA_alpha(ae_score) - B0) / (alarm - B0), 0, 1)",
+ "state": "per-chamber (stateful)"
+}

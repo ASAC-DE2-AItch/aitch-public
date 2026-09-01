@@ -1,0 +1,89 @@
+{
+  "generated_at_utc": "2026-08-03 04:56:56",
+  "rows": 834036,
+  "wafers": 80294,
+  "contract_ok": true,
+  "time_axis": {
+    "source": "C40 (실측 타임스탬프)",
+    "design_doc_said": "타임스탬프 컬럼 없음 → 월내 균등 배치 근사",
+    "correction": "C40 이 전 구간 존재 → 균등 근사 불필요. §9 '매핑 근사' 위협 해소",
+    "span": [
+      "2018-12-01 00:44:06.700000",
+      "2019-12-01 01:51:57.460000"
+    ]
+  },
+  "real_segment": {
+    "wafers": 11939,
+    "span": [
+      "2018-12-01 00:44:06.700000",
+      "2019-02-08 09:42:35.900000"
+    ],
+    "calendar_days": 68,
+    "note": "README 표기 68일 vs 달력일수 — 아래 production_days 로 정본 확정"
+  },
+  "synth_segment": {
+    "wafers": 68355,
+    "span": [
+      "2019-02-09 09:00:00",
+      "2019-12-01 01:51:57.460000"
+    ],
+    "calendar_days": 296,
+    "s_index_range": [
+      0,
+      68354
+    ]
+  },
+  "day_check_q1": {
+    "설계서_확인항목": "README 실측 68일/합성 297일 vs 달력 70일/295일 — 2일 불일치",
+    "판정": "생산일(wafer 존재 날짜) 기준이 정본. 실측 생산일=68, 합성 생산일=296"
+  },
+  "events_ledger_q2": {
+    "설계서_확인항목": "wafer_start/end 인덱스(최대 68,106)가 합성 S-인덱스인지",
+    "s_index_max": 68354,
+    "ledger_wafer_end_max": 68106,
+    "판정": "S-인덱스로 확인 (ledger max ≤ S-index max)"
+  },
+  "eval_window": {
+    "start": "2019-02-09",
+    "end": "2019-11-30",
+    "n_days_calendar": 295,
+    "n_days_with_wafers": 295,
+    "n_wafers": 68349,
+    "empty_days": []
+  },
+  "init_train": {
+    "cutoff": "2019-02-08",
+    "n_wafers": 11939
+  },
+  "pm_log_exp": [
+    {
+      "date": "2018-12-24 00:00:00",
+      "type": "major",
+      "verdict": "loud",
+      "source": "pm_log.json (실측)"
+    },
+    {
+      "date": "2019-04-22 03:00:00",
+      "type": "major",
+      "verdict": "loud",
+      "source": "pm_ledger.csv (합성)"
+    },
+    {
+      "date": "2019-08-20 03:00:00",
+      "type": "major",
+      "verdict": "loud",
+      "source": "pm_ledger.csv (합성)"
+    }
+  ],
+  "wafer_day_map_sha1": "12593a4834ba42acf6ddcf233a0b5637267d279b",
+  "target_stats": {
+    "mean": 809.9813373352928,
+    "std": 244.49943828755463,
+    "n_missing": 0
+  },
+  "env": {
+    "python": "3.14.3",
+    "pandas": "3.0.3",
+    "numpy": "2.4.6"
+  }
+}

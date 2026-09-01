@@ -1,0 +1,693 @@
+# =============================================================================
+# 능동형 제조 AI 플랫폼 v4 — Docker Compose (로컬 개발 환경)
+# =============================================================================
+# 구성: Kafka (KRaft, Zookeeper 불필요) + PostgreSQL + Kafka UI
+# 실행: docker compose up -d
+# 종료: docker compose down -v
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # 1. Apache Kafka (KRaft Mode — Zookeeper 없이 단독 실행)
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:latest
+    container_name: fdc-kafka
+    ports:
+      - "9092:9092"       # 호스트에서 접근하는 포트
+      - "9094:9094"       # 내부 컨트롤러 포트
+    environment:
+      # KRaft 설정 (Zookeeper 대체)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      # 리스너 설정
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # 토픽 자동 생성 허용
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      # 성능 설정 (로컬 개발용 경량화)
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # 메시지 크기 제한 (FDC Trace JSON은 클 수 있음)
+      KAFKA_MESSAGE_MAX_BYTES: 10485760        # 10MB
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+
+    # volumes:
+    #   - kafka_data:/tmp/kafka-logs
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 2026-08-12 신설 — restart 정책 부재(=no)로 인프라 3종이 죽은 채 방치됐다.
+    #   원인은 앱이 아니다: Hyper-V VmSwitch 붕괴(03:03:16~27, 이벤트 232/233/234·67/69/71)로
+    #   WSL2/Docker VM 이 네트워크를 잃고 03:03:30.26 에 postgres·kafka·qdrant 가
+    #   **8ms 안에 동시 exit 255**. 정책이 있던 gateway(unless-stopped)만 살아남았고
+    #   나머지는 16분간 정지 상태로 방치됐다(사람이 docker start 로 복구).
+    #   ⚠️ `always` 가 아닌 이유: demo_reset.py 가 의도적으로 멈추는 컨테이너를 되살리면 안 된다.
+    #   ⚠️ 위 kafka-init 의 `restart: "no"` 는 원샷 잡이므로 그대로 둔다 (여기 정책과 무관).
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 1-1. Kafka 토픽 초기화 (원샷 — 기동 시 6토픽 생성 후 종료)  [2026-07-20 추가]
+  # ---------------------------------------------------------------------------
+  # Kafka는 의도적 무볼륨(스트림 휘발 — 리허설마다 클린 슬레이트, 정본은 PG)이라
+  # 컨테이너 재생성 시 토픽이 사라진다 → 이 서비스가 매 기동마다 자동 복구한다.
+  # 토픽 계약 단일 소스: docs/API_Contract_명세서.md (fdc.<domain> 6종, 헌법 6-4)
+  kafka-init:
+    image: apache/kafka:latest
+    container_name: fdc-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    # 2026-07-24 수리(M2 리허설): YAML 폴딩(>)은 "더 들여쓴 줄"의 개행을 보존한다 —
+    # 연속줄이 별도 bash 명령으로 실행돼 `--create: command not found`. 한 줄로 통합 + fdc.mlops 추가(§0).
+    command: >
+      "for t in fdc.raw fdc.prediction fdc.alert fdc.correction fdc.actual fdc.agent fdc.mlops; do /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9093 --create --if-not-exists --topic $$t --partitions 1 --replication-factor 1; done && echo '✅ fdc.* 7토픽 준비 완료'"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # 2. PostgreSQL (TimescaleDB 대신 가벼운 vanilla PG로 시작)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: fdc-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fdc_admin
+      POSTGRES_PASSWORD: fdc_pass_2026
+      POSTGRES_DB: fdc_platform
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql   # 초기 테이블 자동 생성
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fdc_admin -d fdc_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped                # 사유는 kafka 블록 주석 (2026-08-12 VmSwitch 사고)
+
+  # ---------------------------------------------------------------------------
+  # 3. Kafka UI (브라우저에서 토픽/메시지 확인)
+  # ---------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: fdc-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: fdc-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # 4. Qdrant (Vector DB — RAG 4종 KB, payload 필터 지원)  [v4.4 추가]
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: fdc-qdrant
+    ports:
+      - "6333:6333"       # REST API / Web UI (http://localhost:6333/dashboard)
+      - "6334:6334"       # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped                # 사유는 kafka 블록 주석 (2026-08-12 VmSwitch 사고)
+
+  # ---------------------------------------------------------------------------
+  # 5. 예측 DB sink (팀원 A — fdc.prediction·fdc.actual → wafer_predictions)  [2026-07-23 추가]
+  # ---------------------------------------------------------------------------
+  # ⚠ docker-compose 는 PM/인프라 소유(헌법 3-1) — 본 서비스 등재는 PM 리뷰 대상.
+  #   Dockerfile 부재로 python:3.12-slim + 소스 볼륨(ro) + 최소 의존 설치(데모).
+  #   sink 는 stdlib + confluent-kafka + psycopg2 만 필요(lean85_pipeline 미import).
+  #   운영 전환 시 Dockerfile 빌드 이미지 권장(매 기동 pip 회피).
+  prediction-sink:
+    image: python:3.12-slim
+    container_name: fdc-prediction-sink
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093       # 내부 리스너 (호스트 실행 시는 localhost:9092)
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "pip install --no-cache-dir confluent-kafka psycopg2-binary &&
+             python src/agent_a_mlops/prediction_sink.py"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 5b. CT⓪ bias updater (팀원 A — fdc.actual·fdc.agent → ct_decisions + control/ct0)  [2026-08-07]
+  # ---------------------------------------------------------------------------
+  # ⚠ docker-compose 는 PM/인프라 소유(헌법 3-1) — 본 서비스 등재는 PM 리뷰 대상.
+  #   설계 정본 = docs/CT0_ModelR2R_설계방향_v1.md (D3: 예측 consumer 와 분리 프로세스).
+  #   sink 와 같은 이유로 분리한다 — 보정 경로의 DB 장애가 예측 지연을 만들면 안 된다.
+  #
+  #   **profile 로 묶어 기본 기동에서 뺀다**: `ct.model_r2r.mode` 가 `off` 인 동안 이 프로세스는
+  #   기동 즉시 종료하는데(무인 적용 금지 규율), `restart: unless-stopped` 와 만나면 재기동
+  #   루프가 된다. shadow 리허설 때만 켠다:  docker compose --profile ct0 up -d ct0-bias-updater
+  #
+  #   ⚠ 2026-08-12 정정 — profile 은 **기본 기동만** 막는다. 한 번 켜 두면 위 루프가 그대로
+  #     실현된다(밤새 실측: 62초마다 pip install 재실행 · `docker ps` 에 영구 `Restarting`).
+  #     그래서 정책 자체를 `on-failure` 로 바꿔 뿌리를 막았다 — 기동 거부(exit 0)는 정상
+  #     종료이므로 되살리지 않고, 진짜 크래시(non-zero)에서만 재기동한다.
+  #
+  #   volumes 가 sink 와 다른 점: `control/` 은 **쓰기**가 필요하다 (bias 파일 원자 교체 채널).
+  #   나머지 소스는 ro 로 두어 이 프로세스가 리포를 건드리지 않게 한다.
+  ct0-bias-updater:
+    image: python:3.12-slim
+    container_name: fdc-ct0-bias-updater
+    profiles: ["ct0"]
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - ./control:/app/control            # bias 파일 쓰기 (updater → consumer 단방향 채널)
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093       # 내부 리스너 (호스트 실행 시는 localhost:9092)
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+      PYTHONPATH: /app/src/agent_a_mlops
+      # CT0_TRAIN_RMSE: "99.84"                 # (선택) clamp 분모 override — 기본은 champion 메타
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "pip install --no-cache-dir confluent-kafka psycopg2-binary pyyaml &&
+             python -m ct0_bias.updater"
+    # `unless-stopped` 아님 (2026-08-12) — mode=off 기동 거부는 **정상 종료**라 되살리면 안 된다.
+    #   kafka-init(원샷)과 같은 성격. shadow 로 올린 뒤 실제로 죽는 경우만 재기동한다.
+    restart: on-failure
+
+  # ---------------------------------------------------------------------------
+  # 6. Agent Service (팀원 C — fdc.alert → 조수 3종 → Supervisor → Brief)  [2026-07-29 추가·C6-2]
+  # ---------------------------------------------------------------------------
+  # ⚠ docker-compose 는 PM/인프라 소유(헌법 3-1) — 본 서비스 등재는 **PM 리뷰 대상**.
+  #   prediction-sink(5번) 등재 선례와 같은 방식으로 올린다.
+  #
+  # 이미지 구성 (src/agent_service/Dockerfile):
+  #   🔥 굽는 것  : 코드·라이브러리·**CPU 전용 torch**·config·fixtures
+  #   📦 볼륨     : 임베딩 모델 가중치 bge-m3 약 2GB (HF_HOME=/models)
+  #   🌐 이미지 밖: LLM. vLLM/Ollama 는 별도 서버라 AGENT_LLM_BASE_URL 만 주면 된다
+  #
+  # 모델 볼륨 최초 채우기 (HF 재다운로드 회피 — EC2 부트스트랩과 같은 S3 사본):
+  #   docker volume create aitch_hf_cache
+  #   docker run --rm -v aitch_hf_cache:/models -v ~/.aws:/root/.aws:ro amazon/aws-cli \
+  #     s3 sync s3://aitch-agent-service/hf_cache/ /models/hub/ --exclude "*model.onnx*"
+  #   · ONNX 2.1GB 는 FlagEmbedding 이 안 쓴다(우리는 pytorch_model.bin) → 6.9GB에서 4.7GB로.
+  #   · ⚠️ Git Bash 에서는 `MSYS_NO_PATHCONV=1` 을 앞에 붙일 것 — 안 붙이면 /models 가
+  #     C:/Program Files/Git/models 로 치환돼 볼륨이 아닌 컨테이너 내부에 받고 사라진다
+  #     (2026-07-29 실측). PowerShell·cmd 는 그대로.
+  #   비워둬도 기동은 된다 — FlagEmbedding 이 HuggingFace 에서 자동으로 받는다(느릴 뿐).
+  # 6-0. 원샷 시더 — 임베딩 모델(bge-m3)을 hf_cache 볼륨에 복원 후 종료 (spc-seed 선례).
+  #
+  # 🔴 **왜 필요한가.** `agent-service` 는 `HF_HUB_OFFLINE=1` 이라 볼륨이 비면 **명시적으로
+  #    실패**한다(조용히 4GB 를 받는 것보다 낫다는 판단 — 6번 블록 주석). 그런데 그 실패를
+  #    파이프라인의 6-2 무중단 가드가 삼켜 **근거 0장 Brief 가 정상처럼 나간다.** 볼륨을
+  #    채우는 절차가 사람 기억에만 있어서, 새 PC·새 EC2 에서 그대로 재발했다(PM 실측 8/7).
+  #
+  # 소스는 S3 다 — `stage_bge_m3_to_s3.sh` 가 올려둔 것과 **같은 레이아웃**을 쓴다
+  #   (`hf_cache/models--BAAI--bge-m3/` → 볼륨의 `hub/` 밑). 2026-08-08 확인: 41객체·6.9GB.
+  #   HF 에서 직접 받지 않는 이유 = 버전이 움직이면 라운드 간 비교가 깨진다(가중치 고정).
+  #
+  # 멱등: `aws s3 sync` 는 없는·바뀐 것만 받는다. 이미 채워져 있으면 수 초에 끝난다.
+  #
+  # ⚠️ 자격증명 — 로컬은 `~/.aws` 를 읽기전용 마운트, EC2 는 **인스턴스 롤**(마운트가 빈
+  #    디렉토리여도 SDK 가 IMDS 로 폴백하므로 같은 정의로 양쪽이 돈다).
+  hf-seed:
+    image: amazon/aws-cli:2.17.0
+    container_name: fdc-hf-seed
+    environment:
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      HF_S3_URI: ${HF_S3_URI:-s3://aitch-agent-service/hf_cache/}
+    volumes:
+      - hf_cache:/models
+      # 로컬 자격증명. Windows=USERPROFILE / Linux·macOS=HOME 으로 갈린다.
+      # ⚠️ 자동 리뷰가 2회 제기한 건 — *"`${VAR:-기본}` 의 기본값 부분은 재귀 보간되지 않아
+      #    Linux 에서 `$HOME` 이 리터럴로 남는다"*. **실측으로 재현되지 않았다**(compose 5.0.2):
+      #      `${NOPE:-$HOME}` 와 `${NOPE:-${HOME}}` 가 **동일하게** `/home/…` 로 확장된다.
+      # ⚠️ 그리고 어느 쪽이든 **EC2 동작에는 영향이 없다** — 경로가 없으면 docker 가 빈
+      #    디렉토리를 만들고, 자격증명 파일이 없으면 aws CLI 가 **IMDS(인스턴스 롤)로 폴백**한다.
+      #    이 마운트는 로컬 개발 편의용이지 EC2 의 동작 조건이 아니다.
+      - ${USERPROFILE:-$HOME}/.aws:/root/.aws:ro
+    entrypoint: ["/bin/sh", "-c"]
+    # `hub/` 밑으로 받는다 — HF_HOME=/models 이므로 캐시 규칙상 /models/hub/models--BAAI--bge-m3.
+    # ⚠️ **리스트의 원소 하나**로 둔다. 문자열로 쓰면 compose 가 공백으로 쪼개 `sh -c` 에
+    #    여러 인자로 들어가고, 그러면 첫 단어(`aws`)만 스크립트로 실행된다(2026-08-08 실측).
+    # ⚠️ `$$` 는 compose 의 이스케이프다 — 컨테이너 셸에 `$HF_S3_URI` 로 전달된다.
+    command:
+      - >-
+        aws s3 sync "$$HF_S3_URI" /models/hub/ --only-show-errors
+        && du -sh /models/hub/models--BAAI--bge-m3
+    restart: "no"
+
+  agent-service:
+    build:
+      context: .                                  # ⚠ repo 루트 — config/params.yaml 을 루트 기준으로 찾는다
+      dockerfile: src/agent_service/Dockerfile
+    image: aitch-agent-service:c6-2
+    container_name: fdc-agent-service
+    environment:
+      # --- 스위치 3종 (RUN_MODES.md) ---
+      AGENT_SOURCE_MODE: kafka                    # fdc.alert 실구독 (replay 로 바꾸면 fixtures 재생)
+      # 2026-08-08 `mock` → `real` (#142). 구 주석은 "B 정량 API 미대조 구간 — 스텁 유지"
+      #   였으나 B5-4 실엔진은 #109 로 배선을 마쳤고 평가 라운드도 `real` 로 잰다. `mock` 이면
+      #   `pipeline.py:161` 이 `_stub_tuning()` 으로 빠져 **recipe 옵션 수치가 전부 스텁**이라,
+      #   호스트를 컨테이너로 바꾸는 순간 다른 것을 재게 된다.
+      # ⚠️ **재료 3종이 이미지에 함께 들어가야 성립한다** — 없이 켜면 ImportError 가
+      #    `except Exception`(pipeline.py:187)에 삼켜져 경고 한 줄만 남기고 스텁으로 빠진다
+      #    ("real 인데 스텁"). 같은 PR 에서 동반한 것: `.dockerignore` 부정 3줄(B 모듈)·
+      #    Dockerfile `COPY src/common/`·requirements `sqlalchemy`.
+      AGENT_API_MODE: real
+      # ⚠️ 아래 둘은 **호스트 `stack.services` c-agent 와 반드시 같은 값**이어야 한다 (2026-08-08).
+      #   빠져 있으면 코드 기본값(`consumer-group-agent-service` · earliest)으로 붙는데,
+      #   호스트는 `-demo`·latest 라 **그룹이 갈려 둘 다 전 알람을 처리**한다(#132 PM 주석).
+      #   같은 그룹이면 하나가 놀 뿐이지만, 그룹이 다르면 **중복 Brief 가 실제로 생성**된다.
+      #   `-demo` 인 사유(구 그룹 백로그 커밋 때문에 latest 가 무시됨)는 params.yaml 주석 참조.
+      KAFKA_CONSUMER_GROUP: consumer-group-agent-service-demo
+      AGENT_KAFKA_OFFSET_RESET: latest
+      AGENT_LLM_MODE: api                         # ⚠️ LlmMode 는 ollama|api 뿐이다. vLLM 은 api(D13 guided_json)
+      # ⚠️ 두 키 모두 **기본값·필수표시(`:-` / `:?`)를 두지 않는다** (PM 리뷰 #70, 2026-07-30):
+      #   · `:?` 는 **파일 로드 시점**에 평가돼, 키가 없으면 `docker compose up postgres` 같은
+      #     무관한 명령까지 전부 실패한다(실측 확인). `.env` 는 gitignore 이므로 clone 직후
+      #     인프라만 띄우려는 팀원이 막힌다 — dev compose 의 변수 보간이 0건이던 이유다.
+      #     미설정 검사는 앱 기동 시 `config.py` 가 한다(백엔드 생성 시 명시적 에러).
+      #   · `:-12288` 은 PR #69 에서 **코드의 조용한 기본값(8192)을 없앤 것과 모순**이다.
+      #     같은 자리에 기본값을 다시 놓으면 terraform `vllm_max_model_len` 이 바뀔 때 똑같이
+      #     조용히 어긋난다. 미설정이면 #69 설계대로 "예산 검사 skip + 1회 경고"로 떨어진다.
+      #   ⚠️ 값은 **서버 실제값과 일치**시킬 것 (terraform `vllm_max_model_len`).
+      #      어긋나면 예산을 오인해 recipe 프롬프트가 전건 초과 경고 → 불필요한 재시도·fallback
+      #      (2026-07-29 실측: recipe 실패 16건 vs limit 4·manual 2 · max 43.8초).
+      #      확인: curl -s $AGENT_LLM_BASE_URL/v1/models | jq '.data[0].max_model_len'
+      AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL}
+      AGENT_LLM_MAX_MODEL_LEN: ${AGENT_LLM_MAX_MODEL_LEN}
+      # --- 인프라 ---
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093         # 내부 리스너 (호스트 실행 시 localhost:9092)
+      QDRANT_URL: http://qdrant:6333
+      # ⚠️ DSN 환경변수가 **둘**이다 (2026-07-29 실측 — 하나만 주면 조용히 localhost 로 붙는다):
+      #   · AGENT_PG_DSN  — app/db.py (조치로그 페어링·wafer_predictions 조회)
+      #   · DATABASE_URL  — app/run.py 의 그루퍼 연결(psycopg2, PM 규약 승계)
+      AGENT_PG_DSN: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+      # RTD 해제 근거 Brief 트리거 (#140) — 열린 inhibit 의 단일 소스는 게이트웨이
+      # `GET /chambers/status` 다(계약 §9). 미설정이면 localhost 로 붙어 컨테이너 안에서
+      # 조용히 연결 실패한다 — 위 DSN 2종과 같은 함정이라 명시한다.
+      AGENT_GATEWAY_BASE_URL: http://gateway:8000
+      # --- 임베딩 모델 위치 (볼륨 마운트 지점. Dockerfile ENV 와 동일 — 명시로 남긴다) ---
+      HF_HOME: /models
+      # 볼륨에 모델이 이미 있으므로 HF 조회를 끈다. 안 끄면 매 기동마다 파일 목록·해시를
+      # HEAD 로 확인하러 나가 느리고(2026-07-29 실측 수십 초) 네트워크가 없으면 더 오래 끈다.
+      # ⚠️ 볼륨이 비어 있으면 **명시적으로 실패**한다 — 조용히 4GB 를 받는 것보다 낫다.
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - hf_cache:/models                          # 모델 가중치 — 컨테이너를 지워도 남는다
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      hf-seed:
+        condition: service_completed_successfully  # 시드 exit 0 을 기다린다 (spc-consumer 선례).
+                                                   #   여기가 없으면 빈 볼륨으로 기동해 근거 0장.
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 6b. KB 검색 서버 (팀원 C — S9 Copilot 의 벡터 검색 위임)  [2026-08-11 추가]
+  # ---------------------------------------------------------------------------
+  # ⚠ docker-compose 는 PM/인프라 소유(헌법 3-1) — 본 서비스 등재는 **PM 리뷰 대상**
+  #   (agent-service 6번 등재 선례와 같은 방식).
+  #
+  # **왜 별 서비스인가.** S9 Copilot 은 게이트웨이 프로세스에서 도는데 거기엔 임베딩 스택이
+  # 없다(FlagEmbedding·torch 미설치). 넣으면 REST/SSE 경량 층이 GB 단위로 커지고 `hf_cache`
+  # 4.7GB 까지 물어야 한다. 반대로 **이 이미지는 이미 전부 갖고 있다** — 가진 쪽에 검색
+  # 라우트 하나만 얹는 것이 싸다. 실측: 없을 때 사례 10,000점을 두고 "0건" 이라고 답했다
+  # (ModuleNotFoundError 를 삼켜 **실패가 아니라 빈손**으로 보였다).
+  #
+  # **왜 agent-service 안에 안 넣나.** 한 컨테이너에서 컨슈머와 HTTP 서버를 함께 돌리면
+  # 무엇이 죽었는지 구분이 안 되고, 컨슈머 재시작이 검색을 끊는다. **같은 이미지·다른
+  # 커맨드**로 나눈다 (이미지 재사용이라 디스크 추가 비용 0).
+  #
+  # 읽기 전용이다 — 검색만 하고 아무것도 쓰지 않는다. 포트도 내부망에만 연다.
+  kb-server:
+    build:
+      context: .
+      dockerfile: src/agent_service/Dockerfile
+    image: aitch-agent-service:c6-2               # agent-service 와 **같은 이미지**
+    container_name: fdc-kb-server
+    command: ["python", "-m", "src.agent_service.kb_server"]
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      HF_HOME: /models
+      HF_HUB_OFFLINE: "1"                         # 볼륨에 이미 있다 (agent-service 와 동일 사유)
+      KB_SERVER_PORT: "8100"
+    volumes:
+      - hf_cache:/models                          # 임베딩 가중치 — 이게 없으면 근거 0장
+    expose:
+      - "8100"                                    # 내부망 전용 — 호스트 노출 안 함(읽기 전용이어도 최소 노출)
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      hf-seed:
+        condition: service_completed_successfully
+    healthcheck:
+      # ⚠️ /health 는 "떴다" 만 말한다. 모델 로딩까지 보려면 `POST /warmup` 을 따로 때린다
+      #    ("떴다 ≠ 붙었다" — 헌법 7장). 여기서 warmup 을 걸면 기동이 수십 초 늘어진다.
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 7. Smart SPC (팀원 B — fdc.raw → Nelson·TTTM → fdc.alert)  [2026-07-31 추가·B6-2]
+  # ---------------------------------------------------------------------------
+  # ⚠ docker-compose 는 PM/인프라 소유(헌법 3-1) — 본 서비스 등재는 **PM 리뷰 대상**.
+  #   agent-service(6번)·prediction-sink(5번) 등재 선례와 같은 방식.
+  #
+  # 이미지 구성 (src/agent_b_spc/Dockerfile): 파이썬·의존성·entrypoint 만 굽고 **소스는
+  #   리포 루트 볼륨(`./:/app`)** 으로 붙인다 — pm_log 의 os.replace 가 부모 디렉토리 마운트를
+  #   요구하기 때문(§1-③). CMD 는 exec form 이라 SIGTERM 이 python 에 전달돼 graceful shutdown 이
+  #   실제로 돈다(§1-②). USER=root — 리포 루트 bind mount 에 쓰는 유일 서비스(D5, C 와 상이).
+  #
+  # ⚠️ run_stack.ps1 의 B-SPC 호스트 프로세스와 **이중 기동 금지**(같은 consumer group) — G8 로 제거함.
+
+  # 7-1. 원샷 시더 — control_limits 초기 적재 후 종료. 컨슈머가 완료를 기다린다.
+  spc-seed:
+    build:
+      context: .                                  # ⚠ repo 루트 — config/params.yaml 을 루트 기준으로 찾는다
+      dockerfile: src/agent_b_spc/Dockerfile
+    image: aitch-spc:b6-2                          # 태그 — 7-2 가 재사용(의존성 동일)
+    container_name: fdc-spc-seed
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      # DATABASE_URL 명시 필수 — .env 값은 localhost 라 없으면 컨테이너가 자기 자신을 가리킨다
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # --skip-if-seeded: 승인 적용분이 있으면 재시딩 가드에 걸리므로 이미 있으면 건너뛴다(exit 0, §1-⑤)
+    command: ["python", "-m", "src.agent_b_spc.seed_control_limits", "--skip-if-seeded"]
+    restart: "no"
+
+  # 7-2. 컨슈머 — 시드 완료 후 기동.
+  spc-consumer:
+    image: aitch-spc:b6-2                          # 7-1 이 빌드·태그한 이미지 재사용
+    container_name: fdc-spc-consumer
+    working_dir: /app
+    volumes:
+      - ./:/app                                    # rw — pm_log·contribution_log 를 호스트 리포 루트에 쓴다(§1-③)
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093          # 내부 리스너 (호스트 실행 시 localhost:9092)
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+      SPC_REQUALIFIED_LIVE: "false"                # ChamberRequalified 발행 토글(.env.example 기본값과 일치)
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      spc-seed:
+        condition: service_completed_successfully  # 시드 exit 0 을 기다린다(무시딩 = 무음 정지)
+    stop_grace_period: 30s                         # POLL_TIMEOUT_SEC=1.0 + _flush_all() 잔여 버퍼 flush 여유
+    # on-failure:3 (unless-stopped 아님): ⓐ G5 가드가 죽으면 무한 크래시 루프 방지
+    #   ⓑ (해소·B7-1 D13/D8) 구 사유 "멱등 부재 → 자동 재시작이 미커밋 구간 재소비"는
+    #      소멸 — 재전달 중복은 결함이 아니라 명시 수용(at-least-once)이고 판정은 D15가 보호.
+    #      단 ⓐ가 잔존하므로 unless-stopped 전환은 하지 않고 on-failure 존치.
+    restart: on-failure:3
+
+  # ---------------------------------------------------------------------------
+  # 8. Incident 그루퍼 (PM 백엔드 — fdc.alert → incidents · incident_alerts)  [P4-3]
+  # ---------------------------------------------------------------------------
+  # ⚠ docker-compose·src/orchestrator 모두 PM 소유(헌법 3-1) — **PM 리뷰 대상**.
+  #   PR #121 본문의 "PM 소유 디렉토리 Dockerfile 승인(작성 팀원 C·리뷰 PM)" 범위로 작성.
+  #
+  # 이미지 구성 (src/orchestrator/Dockerfile): 의존성 + **소스·config 를 굽는다**.
+  #   b-spc 처럼 리포 루트를 붙이지 않는 이유 = 그루퍼는 디스크에 쓰는 게 없다
+  #   (산출물이 전부 Postgres). 볼륨 0개 — ⑩ 공유 볼륨(control/·models/·pm_log) 대상도 아니다.
+  #
+  # ⚠️ 호스트 프로세스와 **이중 기동 금지** — `params.yaml` `stack.services` 의 `grouper`
+  #   항목이 같은 커맨드를 호스트에서 띄운다. 둘 다 뜨면 같은 consumer group 에 컨슈머가
+  #   2개 붙는다. `fdc.alert` 는 파티션 1개라 갈리지는 않고 **하나만 일하고 하나는 논다** —
+  #   어느 쪽인지는 리밸런싱이 정하고 둘 다 정상 로그를 찍어 밖에서 구분이 안 된다
+  #   (b-spc 가 #88 에서 겪은 것과 동일 — 7번 블록 말미 경고).
+  grouper:
+    build:
+      context: .                                   # ⚠ repo 루트 — config/params.yaml 을 루트 기준으로 찾는다
+      dockerfile: src/orchestrator/Dockerfile
+    image: aitch-orchestrator:p4-3
+    container_name: fdc-grouper
+    volumes:
+      # ⚠️ **RTD inhibit 신호 채널** (#118 이후 · #130 리뷰 차단 대응 2026-08-07).
+      #   그루퍼가 `control/inhibit/<chamber>.json` 을 쓰고(chamber_inhibit._drop_signal)
+      #   **시뮬레이터가 읽는다**(kafka_producer.py:148) — 쓰는 쪽과 읽는 쪽이 다른 파일 채널이라
+      #   ⑩ 대상이다. 마운트가 없으면 쓰기가 **실패가 아니라 컨테이너 안에서 성공**해서,
+      #   DB 에는 정지 기록이 남아 화면은 "정지됨" 인데 **신호를 아무도 못 봐 라인이 계속 돈다.**
+      #   ※ 소스는 계속 굽는다(Dockerfile ①-a).
+      - ./control:/app/control
+      # 🔴 **config 를 실물로 문다** (2026-08-10 · #144 실측 — PM 승인 요청분).
+      #   `rtd.auto_inhibit` 은 헌법 1-1 예외 4 ⓓ 가 *"오발동 1건 실증 시 **즉시** 제안 모드
+      #   회귀"* 를 요구하는 **안전 차단기**다. 그런데 이 마운트가 없으면
+      #   `config/params.yaml` 이 **이미지 안 사본**이라, 호스트에서 스위치를 되돌려도
+      #   그루퍼는 못 본다 — **이미지를 다시 빌드해야** 먹는다(= "즉시"가 성립하지 않는다).
+      #   실측: 호스트 true / 컨테이너 false 로 갈린 채 판정이 계속 돌았다.
+      #   읽기 전용이라 그루퍼가 config 를 건드릴 위험은 없다.
+      - ./config:/app/config:ro
+    environment:
+      # ⚠️ 키 이름이 다른 서비스와 다르다 — 코드가 읽는 건 `KAFKA_BOOTSTRAP` 이다
+      #   (incident_grouper.py:453). 여기에 `KAFKA_BOOTSTRAP_SERVERS` 를 적으면 조용히
+      #   기본값 localhost:9092 로 떨어져 컨테이너가 자기 자신에게 붙으려 한다.
+      KAFKA_BOOTSTRAP: kafka:9093                  # 내부 리스너 (호스트 실행 시는 localhost:9092)
+      # DATABASE_URL 명시 필수 — .env 값은 localhost 라 없으면 컨테이너가 자기 자신을 가리킨다.
+      #   미설정이면 기동 즉시 RuntimeError 로 죽는다(조용한 폴백 없음 — incident_grouper.py:452).
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    # stop_grace_period 기본(10s)으로 충분 — poll(1.0) 이라 시그널 후 최대 1초면 루프를 빠져나온다
+    #   (b-spc 의 30s 는 _flush_all() 잔여 버퍼 때문이고 그루퍼엔 그 버퍼가 없다).
+    # unless-stopped 안전 — 재전달 중복은 incidents·incident_alerts **upsert** 가 흡수한다
+    #   (수동 커밋 at-least-once 라 미커밋 구간은 재소비되는 게 정상 동작).
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 9. 예측 컨슈머 a-pred (팀원 A — fdc.raw → lean-85 + AE → fdc.prediction)
+  # ---------------------------------------------------------------------------
+  # ⚠ `src/agent_a_mlops/` 는 A 소유(헌법 3-1) — **A 리뷰 대상**. 5번 prediction-sink 와
+  #   다른 프로세스다(5번 = fdc.prediction → DB 적재 / 여기 = 예측 생성).
+  #
+  # 이미지 구성 (src/agent_a_mlops/Dockerfile): 의존성 + **CPU 전용 torch** 만 굽고
+  #   **소스는 리포 루트 볼륨**으로 붙인다 — b-spc 와 같은 형태이나 이유는 반대편이다.
+  #   b-spc 는 pm_log 를 **쓰는** 쪽(os.replace 가 부모 마운트 요구), a-pred 는 **읽는** 쪽인데
+  #   구우면 빌드 시점 스냅샷으로 얼어붙고 **에러 없이** 낡은 PM 이력을 쓰게 된다.
+  #
+  # ⚠️ **⑩ 공유 볼륨의 본체가 이 서비스다** (인프라 설계 v2 §4-⑩). 쓰는 프로세스와 읽는
+  #   프로세스가 다른 파일 채널 셋을 전부 여기서 소비한다 — 리포 루트 마운트로 한 번에 덮는다:
+  #     control/ct2 (ct2_orchestrator 드롭 → a-pred 가 processed/ 로 이동 · **쓰기 필요**)
+  #     models/     (번들 로드)      pm_log.json (b-spc 가 원자 교체 → mtime 캐시로 재독)
+  #
+  # ⚠️ 호스트 프로세스와 **이중 기동 금지** — `params.yaml` `stack.services` 의 `a-pred` 가
+  #   같은 커맨드를 호스트에서 띄운다(같은 consumer group `consumer-group-prediction`).
+  a-pred:
+    build:
+      context: .                                   # ⚠ repo 루트 — config/params.yaml 을 루트 기준으로 찾는다
+      dockerfile: src/agent_a_mlops/Dockerfile
+    image: aitch-a-pred:p1
+    container_name: fdc-a-pred
+    working_dir: /app
+    volumes:
+      - ./:/app                                    # rw — control/ct2 신호를 processed/ 로 옮긴다
+    environment:
+      # ⚠️ grouper(8번)와 키 이름이 다르다 — 이쪽 코드가 읽는 건 `KAFKA_BOOTSTRAP_SERVERS` 다
+      #   (consumer.py:67). 두 서비스가 서로 다른 이름을 쓰므로 복붙 시 주의.
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093          # 내부 리스너 (호스트 실행 시는 localhost:9092)
+      LEAN85_AE_MODE: live                         # dummy|live — stack.services 기본값과 일치(A3-3 실연동)
+      # ⚠️ AE 번들은 **반드시 명시**한다 (2026-08-08 추가 — PM 승인 항목, 헌법 3-1 인프라 루트 파일).
+      #   비워 두면 consumer 가 params.yaml `anomaly_ae.bundle_search_glob` 의 `sorted()[-1]` 을
+      #   고르는데, **이름순이라 항상 `ae_v1` 이 이긴다** (`ae_cand_...` < `ae_v1`, 'c'<'v').
+      #   실측: 후보 15개 → 선택 `ae_v1`. 주석의 "최신 자동 선택"과 달리 e4 는 절대 안 잡힌다.
+      #   그래서 8/6 라이브 전환 때 운영자가 세션 환경변수로 덮어써야 했고, 창을 닫으면
+      #   **에러 없이 구 번들로 되돌아갔다**. 값은 리포 루트 `.env` 에서 주입하고 여기 기본값은
+      #   현 배포분(e4)이다 — .env 유실 시에도 서빙 대상이 흔들리지 않게.
+      #   ※ 근본 수정(이름순 → mtime/명시)은 consumer._resolve_ae_bundle 손질 = A 후속.
+      AE_BUNDLE_DIR: ${AE_BUNDLE_DIR:-models/anomaly_ae/ae_cand_seg1pre_e4_20260806}
+      # 나머지(LEAN85_MODEL_DIR·LEAN85_PM_LOG·LEAN85_CT2_PROMOTE_DIR)는 비워 둔다 —
+      #   코드가 리포 루트 기준으로 탐색하고(lp.find_file / REPO_ROOT/control), 리포를 통째로
+      #   마운트했으므로 그 탐색이 그대로 맞는다. 값을 적으면 이원화 지점만 늘어난다.
+    depends_on:
+      kafka:
+        condition: service_healthy
+    stop_grace_period: 30s                         # producer flush(PRODUCER_FLUSH_SEC=5.0) + wafer 버퍼 정리 여유
+    # on-failure:3 — 모델 부재·번들 손상 같은 기동 실패에서 무한 크래시 루프를 막는다
+    #   (b-spc 7-2 와 같은 판단. unless-stopped 면 같은 실패를 초당 반복한다).
+    restart: on-failure:3
+
+  # ---------------------------------------------------------------------------
+  # 10. Gateway (PM — REST/SSE + 승인 게이트 + 시뮬 러너)
+  # ---------------------------------------------------------------------------
+  # ⚠ `src/gateway/` 는 PM 소유(헌법 3-1) — **PM 리뷰 대상**.
+  #
+  # 이미지 구성 (src/gateway/Dockerfile): 의존성만 굽고 **소스는 리포 루트 볼륨**.
+  #   자식 프로세스(시뮬)가 런타임에 리포를 읽고(`src/simulator/scenarios/`·리플레이 CSV)
+  #   `control/inject` 에 **파일을 드롭**하기 때문이다. 구우면 이미지 안 사본에 드롭해
+  #   다른 컨테이너가 그 신호를 못 본다 — 에러 없이 "주입했는데 아무 일도 안 남" 이 된다.
+  #
+  # ⚠️ **B3 — 이 이미지는 gateway + 시뮬 두 몫**이다(설계 v2 §7). S11 RUN 이 시뮬을 자식으로
+  #   띄우므로 pandas·confluent 가 여기 들어 있고, 리소스 리밋도 시뮬 가동분 포함이어야 한다.
+  #
+  # 🔴 **stack_runner 경계 — PM 판단 필요.** S11 의 [서비스 모두 시작] 은
+  #   `params.yaml stack.services`(a-pred·grouper·c-agent)를 자식 프로세스로 띄운다. 그 셋은
+  #   이제 각자 컨테이너라 **두 번 뜬다.** a-pred·c-agent 는 이 이미지에 torch·FlagEmbedding 이
+  #   없어 즉시 실패하지만(안전), **grouper 는 psycopg2·confluent 가 있어 실제로 뜬다.**
+  #   `fdc.alert` 는 파티션 1개라 갈리지는 않고 **둘 중 하나만 일하고 하나는 논다** — 어느 쪽이
+  #   일할지는 리밸런싱이 정하고, 둘 다 "구독 시작" 로그를 정상으로 찍어 **밖에서 구분이 안 된다.**
+  #   컨테이너 쪽이 노는 쪽이 되면 로그만 조용해지고, gateway 쪽이 일하고 있으면 gateway 재시작에
+  #   같이 죽는다 (§4-④ 이중 소비 재발).
+  #   **컨테이너 배포에서는 스택 패널을 누르지 말 것.** 게이트 방식이 정해지면 반영한다.
+  gateway:
+    build:
+      context: .                                   # ⚠ repo 루트
+      dockerfile: src/gateway/Dockerfile
+    image: aitch-gateway:p1
+    container_name: fdc-gateway
+    working_dir: /app
+    volumes:
+      - ./:/app                                    # rw — control/inject 파일 드롭
+      # 🔴 호스트 도커 소켓 (2026-08-11 · 회차 초기화 버튼) — demo_reset.py 6단계가 전부
+      #   `docker …` subprocess 라, 이미지에 구운 CLI 가 이 소켓으로 **호스트 데몬**에 말한다.
+      #   컨테이너 이관 후 [Errno 2] 'docker' 로 버튼이 죽던 것의 해결(리허설 E2E 실측).
+      #   ⚠️ 소켓 = 호스트 도커 전권. 로컬 데모 한정 — AWS 전개(설계 ⑬) 시 재검토·제거 후보.
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8000:8000"
+    environment:
+      # ⚠️ 이쪽은 `KAFKA_BOOTSTRAP` 이다 (main.py). a-pred(9번)의 `KAFKA_BOOTSTRAP_SERVERS` 와
+      #   이름이 다르다 — 서비스마다 갈려 있으니 블록을 복붙할 때 주의.
+      KAFKA_BOOTSTRAP: kafka:9093
+      # 회차 초기화의 `docker compose run spc-seed`(Qual 재시딩)가 **호스트와 같은 프로젝트**를
+      #   보게 한다 — 없으면 cwd(/app) 기준 별개 프로젝트로 새 네트워크를 만든다 (2026-08-11).
+      COMPOSE_PROJECT_NAME: sk
+      # 🔴 S9 Copilot 용 LLM 설정 (2026-08-12 AWS 실측으로 발견).
+      #   챗봇(`/agent/query`)은 **게이트웨이 프로세스 안에서** `make_backend(settings)` 로
+      #   LLM 을 부르는데, 이 블록에 LLM 키가 하나도 없어 기본값 `ollama` 로 붙었다.
+      #   그러면 vLLM 에 **404** 가 나고(`/v1/chat/completions`), 폴백이 받아
+      #   *"근거가 없습니다"* 로 답한다 — **에러 없이 빈손**이라 배선 누락과 구분이 안 된다.
+      #   agent-service(6번 블록)는 같은 3키를 이미 받고 있어 Brief 는 정상이었다 —
+      #   **한쪽만 배선된 상태**여서 더 안 보였다.
+      #   ⚠️ `AGENT_LLM_MODE` 는 `ollama|api` 뿐이고 vLLM 은 **api** 다(D13 guided_json).
+      AGENT_LLM_MODE: api
+      AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL}
+      AGENT_LLM_MAX_MODEL_LEN: ${AGENT_LLM_MAX_MODEL_LEN}
+      # 🔴 **둘 다 넣는다** (2026-08-10 · #144 실측). 이 한 줄이 없으면 컨테이너 시뮬이
+      #   Kafka 에 **한 톨도 안 보낸다** — 그런데 로그는 정상으로 찍힌다.
+      #     ① 여기 없는 키를 `main.py:117` `load_dotenv(..., override=False)` 가
+      #        `.env` 의 **호스트용** `KAFKA_BOOTSTRAP_SERVERS=localhost:9092` 로 새로 주입한다
+      #        (override=False 는 "있는 값을 안 덮을" 뿐, **없는 값은 만든다**)
+      #     ② `simulator_runner._bootstrap()` 이 그 키를 **1순위**로 읽는다
+      #     → 시뮬 자식이 `--bootstrap localhost:9092` 로 떠서 브로커에 못 닿고,
+      #       confluent producer 는 연결 실패를 **예외 없이** 로컬 큐에 쌓는다.
+      #   컨테이너 env 에 키가 **존재하면** override=False 가 안 덮으므로 두 키가 같은 값으로 묶인다.
+      #   (두 키를 다 보는 `_bootstrap()` 폴백은 "어느 쪽이 지워져도 살아남게" 하려던 방어였는데,
+      #    `.env` 주입과 만나면 1순위가 오히려 오염 통로가 된다 — 폴백은 값이 **없을 때**만이
+      #    아니라 **엉뚱하게 채워질 때**도 봐야 한다.)
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      DATABASE_URL: postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform
+      # 🔴 S9 Copilot (2026-08-11 신설) — 게이트웨이가 KB 를 직접 읽는 첫 라우트다
+      #   (`POST /agent/query` → 손잡이 목록·유사 사례). 이 줄이 없으면 기본값
+      #   `localhost:6333` 을 보는데 컨테이너 안에는 Qdrant 가 없다 — 예외가 아니라
+      #   **빈 결과**라서, 답변은 정상으로 나오고 근거만 0장이 된다(#166 KAFKA 건과 같은 계열).
+      QDRANT_URL: http://qdrant:6333
+      # S9 Copilot 의 벡터 검색 위임처 (2026-08-11) — 임베딩이 있는 쪽에 물어본다.
+      #   미설정이면 코드 기본값 http://kb-server:8100 이라 compose 안에서는 같은 값이다.
+      AGENT_KB_SERVER_URL: http://kb-server:8100
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    stop_grace_period: 30s                         # 자식(시뮬) terminate→kill 규약 여유
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 11. 프론트 진입 (PM — React 정적 + /api 프록시, nginx)
+  # ---------------------------------------------------------------------------
+  # ⚠ `frontend/` 는 PM 소유(헌법 3-1) — **PM 리뷰 대상**. `frontend/src/` 는 무접촉이고
+  #   신규 파일 3개(Dockerfile·.dockerignore·nginx/default.conf.template)만 추가했다.
+  #
+  # ⚠️ **컨텍스트가 다른 서비스와 다르다** — `./frontend` 다. 프론트는 파이썬 코드를 안 보고,
+  #   루트 `.dockerignore` 가 `frontend/` 를 통째로 제외하고 있어 루트 컨텍스트로는 못 넣는다.
+  #   그래서 `frontend/.dockerignore` 가 따로 있다(node_modules·dist·tsbuildinfo).
+  #
+  # 이미지 구성: 2단 빌드 — node 로 `npm ci && npm run build` → nginx 가 dist/ 서빙.
+  #   node 는 최종 이미지에 남지 않는다.
+  #
+  # ⚠️ nginx 는 기동 시 upstream 호스트명을 **해석하지 못하면 뜨지 않는다** — 그래서
+  #   `depends_on: gateway` 를 건다. 이미지 기본값이 `gateway:8000` 이라 환경변수 덮기가
+  #   더는 필요 없다(10번이 컨테이너가 되면서 해소 — 원래 계획대로).
+  #   ※ gateway 를 호스트에서 띄우고 프론트만 컨테이너로 볼 때는
+  #     `GATEWAY_UPSTREAM=host.docker.internal:8000` 를 주고 depends_on 을 빼면 된다.
+  frontend:
+    build:
+      context: ./frontend                          # ⚠ 루트 아님 (위 설명)
+      dockerfile: Dockerfile
+    image: aitch-frontend:p1
+    container_name: fdc-frontend
+    ports:
+      # ⚠️ **8080 은 쓸 수 없다** — 4번 kafka-ui 가 이미 잡고 있다(`8080:8080`). 붙이면
+      #   `Bind for 0.0.0.0:8080 failed: port is already allocated` 로 기동이 막힌다(실측).
+      #   배포판에서는 80 으로 직결한다(SG 팀 IP 제한이 접근 통제를 담당).
+      - "8081:80"                                  # 데모 진입점 — http://localhost:8081
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  # kafka_data:
+  pg_data:
+  qdrant_data:
+  # 임베딩 모델 가중치(bge-m3) — 이미지에 굽지 않고 여기 둔다 (C6-2).
+  # ⚠️ `name:` 을 **반드시 고정**한다. 안 그러면 compose 가 프로젝트명을 붙여
+  #    `aitch-agent_service_hf_cache` 라는 **다른 빈 볼륨**을 만들고, 위 안내대로 채운
+  #    `aitch_hf_cache` 는 안 붙는다 → 매 기동마다 HF 에서 4GB 를 새로 받는다
+  #    (2026-07-29 실측 — 로그에 huggingface.co 요청이 뜨면 이 증상이다).
+  hf_cache:
+    name: aitch_hf_cache

@@ -1,0 +1,832 @@
+/* =============================================================================
+   AITCH 디자인 시스템 v5 — "블루프린트 라이트" (S1 시안 확정판 이식)
+   · 셸: AURA (헤더 60 + 사이드바 206 + 카드 r22 헤어라인+확산섀도)
+   · 도면: 백지 + 회색 격자(#E5E7EB) + 하늘 잉크(#0EA5E9)
+   · 4색 의미체계: 민트=AI 산출물 · 핑크=심각/관리선 · 앰버=주의 · 파랑=실측/도면
+   ========================================================================== */
+@import "tailwindcss";
+
+:root{
+  --canvas:#f9feff;
+  --paper:#f7fafc;
+  --card:#ffffff;
+  --panel:#ffffff;
+  --navy:#17324a;
+  --text:#1d4560;
+  --label:#5c86a0;
+  --faint:#9db9c9;
+  --frame:#d3e2ec;
+  --fill:#eef3f7;
+  --ink:#33739c;
+  --ink-strong:#24597c;
+  /* 인트로(ToolIntro) 이식분 — 정상 = 무채색 (ISA-101). 히트스팟 `--tint` 의 기본값이 된다.
+     이 둘이 없으면 인트로 챔버 외곽선·장착 표시가 무효 선언이 되어 통째로 안 보인다. */
+  --neutral:#8b98a3;
+  --neutral-soft:rgba(139,152,163,.1);
+  --alarm:#f59e0b;
+  --alarm-deep:#b45309;
+  --alarm-soft:rgba(245,158,11,.1);
+  --alarm-bright:#fbbf24;
+  --blue:#0ea5e9;
+  --blue-deep:#0284c7;
+  --blue-bright:#38bdf8;
+  --blue-soft:rgba(14,165,233,.1);
+  --pink:#ff6392;
+  --pink-deep:#d13d70;
+  --pink-bright:#fda4c3;
+  --pink-soft:rgba(255,99,146,.1);
+  --mint:#2fc9a7;
+  --mint-soft:rgba(47,201,167,.12);
+  --mint-deep:#1d9a7c;
+  --mint-bright:#6ee7c9;
+  --good:#2aa87c;
+  --box:rgba(255,255,255,.55);
+  --halo:#ffffff;          /* SVG 텍스트 헤일로 = 캔버스 대비색 */
+  --axis:#c3d0da;          /* 차트 축선 */
+  --trace:#0ea5e9;         /* 차트 측정 곡선 잉크 */
+  --bpgrid:#E5E7EB;        /* 도면 격자 */
+  --bppaper:#ffffff;       /* 도면 종이 */
+  --hairline:#f0f3f7;      /* 행 구분선 */
+  --cardline:#edf0f4;      /* 카드 테두리 */
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter','Pretendard Variable',Pretendard,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%}
+body{font-family:var(--sans);background:var(--canvas);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono)}
+svg.ic{width:17px;height:17px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== 셸 ===== */
+.app{display:flex;flex-direction:column;height:100vh;min-width:1180px;background:var(--canvas);color:var(--text);animation:blinkclock 1.9s ease-in-out infinite}
+/* 전역 점멸 시계 — 앱 루트 1개가 위상을 소유, 모든 점멸 점은 var(--blinkO)만 구독 (리마운트돼도 동기 유지) */
+@property --blinkO{syntax:'<number>';inherits:true;initial-value:1}
+@keyframes blinkclock{0%,100%{--blinkO:1}50%{--blinkO:.3}}
+.header{height:60px;flex:0 0 60px;display:flex;align-items:center;gap:14px;padding:0 20px;background:var(--panel);border-bottom:1px solid var(--frame)}
+.body{flex:1;display:flex;min-height:0}
+.sidebar{width:206px;flex:0 0 206px;background:var(--panel);border-right:1px solid var(--frame);display:flex;flex-direction:column;padding:20px 0 16px;overflow:auto}
+.content{flex:1;min-width:0;overflow:auto;padding:16px 20px 12px;display:flex;flex-direction:column;gap:12px}
+
+/* ===== 헤더 ===== */
+.h-left{display:flex;align-items:center;gap:14px;flex:none}
+.logo{font-family:'Titillium Web',sans-serif;font-weight:600;font-size:31px;letter-spacing:.05em;color:var(--navy);line-height:1;display:inline-flex;align-items:baseline}
+.logo .o{color:var(--mint);display:inline-flex;align-items:baseline}
+.logo .aA{height:.7em;width:.66em;display:inline-block;margin-right:1px;overflow:visible}
+.logo .aA path{stroke:currentColor;stroke-width:7.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.logo .aA circle{fill:currentColor}
+.pill-ok{display:inline-flex;align-items:center;gap:6px;background:var(--mint-soft);color:var(--mint-deep);font:700 10.5px var(--mono);padding:4px 9px;border-radius:20px;white-space:nowrap;letter-spacing:.2px}
+.dot{display:inline-block;border-radius:50%;flex:0 0 auto}
+.bpill{height:34px;display:inline-flex;align-items:center;gap:5px;padding:0 11px;border-radius:0;background:var(--fill);color:var(--navy);font:600 11.5px var(--mono);letter-spacing:.04em;cursor:pointer;white-space:nowrap;box-shadow:0 2px 10px rgba(23,50,74,.07),0 6px 22px rgba(23,50,74,.05);border:0}
+.bpill i{font-style:normal;font-size:9px;opacity:.6}
+.chch{height:34px;display:inline-flex;align-items:center;gap:6px;padding:0 9px;border-radius:0;background:var(--card);border:0;font:600 11px var(--mono);color:var(--ink-strong);cursor:pointer;white-space:nowrap;box-shadow:0 2px 10px rgba(23,50,74,.07),0 6px 22px rgba(23,50,74,.05)}
+.chch:hover{background:var(--fill)}
+.chch .dot.crit{opacity:var(--blinkO)} /* critical 챔버 = 점멸 (전역 시계 구독 — 센서 점·사이드바와 상시 동기) */
+.chch .sig{font-size:9px;font-weight:400;color:var(--faint)}
+.chch.sel{background:var(--navy);color:#fff}
+.chch.sel .sig{color:#9fc3dd}
+.h-right{display:flex;align-items:center;gap:10px;flex:none}
+.search{width:310px;height:36px;background:var(--card);border:0;border-radius:999px;display:flex;align-items:center;gap:9px;padding:0 8px 0 15px;color:var(--faint);font-size:12.5px;box-shadow:0 2px 10px rgba(23,50,74,.07),0 6px 22px rgba(23,50,74,.05)}
+.search input{flex:1;border:0;outline:none;background:transparent;font:12.5px var(--sans);color:var(--text);min-width:0}
+.kbd{font:400 10px var(--mono);color:var(--faint);background:var(--fill);border-radius:999px;padding:4px 8px}
+.icon-btn{position:relative;width:36px;height:36px;border-radius:50%;background:var(--card);box-shadow:0 2px 10px rgba(23,50,74,.07);display:grid;place-items:center;color:var(--label);cursor:pointer;border:0}
+.icon-btn .badge{position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 2px var(--panel)}
+.avatar{width:36px;height:36px;border-radius:50%;flex:0 0 36px;background:conic-gradient(from 200deg,#7ec8e3,#2fc9a7,#33739c,#7ec8e3);box-shadow:inset 0 0 0 2px var(--panel),0 2px 10px rgba(23,50,74,.07)}
+
+/* ===== 사이드바 ===== */
+.nav-section{margin-bottom:24px}
+.nav-title{display:flex;align-items:center;gap:10px;font:700 10px/10px var(--mono);letter-spacing:1.6px;color:var(--faint);padding:0 16px 14px 22px}
+.nav-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--frame) 0%,rgba(211,226,236,0) 100%)}
+.nav-item{position:relative;display:flex;align-items:center;gap:11px;height:32px;padding:0 14px 0 22px;font:500 13px var(--sans);color:#7d93a3;cursor:pointer;user-select:none}
+.nav-item svg{width:17px;height:17px;stroke:#9fb3c2;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:0 0 17px}
+.nav-item:hover{color:var(--navy)}
+.nav-item:hover svg{stroke:var(--ink-strong)}
+.nav-item.active{color:var(--navy);font-weight:600}
+.nav-item.active svg{stroke:var(--navy)}
+/* 점멸 문법 (ISA-101, 2026-07-20 확정): 점멸 = 이상 신호만 (critical 챔버 점·위반 센서 점).
+   연결/위치 상태(adot·syncdot)는 정적 속 빈 원 — 시선 분산 방지 */
+.adot{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:var(--panel);border:2.5px solid var(--mint);box-shadow:0 0 6px rgba(47,201,167,.55)}
+.syncdot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--panel);border:2.5px solid var(--mint);box-shadow:0 0 6px rgba(47,201,167,.55)}
+/* 테마 3단 세그먼트 (Settings) — 시스템/라이트/다크 */
+.tseg{display:inline-flex;align-items:center;gap:2px;background:var(--paper);border:1px solid var(--frame);border-radius:9px;padding:2px}
+.tseg button{display:grid;place-items:center;width:26px;height:22px;border:none;border-radius:7px;background:transparent;color:var(--faint);cursor:pointer}
+.tseg button:hover{color:var(--label)}
+.tseg button.on{background:var(--panel);color:var(--navy);box-shadow:0 1px 3px rgba(16,42,67,.14)}
+.nav-item.sim{color:var(--faint)}
+.balance{margin:auto 12px 0;background:var(--paper);border:1px solid var(--frame);border-radius:14px;padding:11px 13px}
+.balance .cap{font:400 9px var(--mono);letter-spacing:1.4px;color:var(--faint)}
+.balance .amt{font:700 18px var(--mono);color:var(--navy);letter-spacing:-.5px;margin-top:4px}
+.balance .chg{font:400 10px var(--mono);margin-top:3px}
+
+/* ===== 카드 공통 ===== */
+.grid{flex:none;min-width:0;min-height:0;display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:stretch}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
+.card{background:var(--card);border:1px solid var(--cardline);border-radius:22px;overflow:hidden;box-shadow:0 6px 24px rgba(20,22,45,.05)}
+.chead{display:flex;align-items:center;gap:8px;padding:9px 16px 4px}
+.chead .t{font-weight:600;font-size:14.5px;color:var(--navy)}
+.chead .cap{font:500 10px var(--mono);letter-spacing:.1em;color:var(--faint)}
+.ex{width:30px;height:30px;border-radius:8px;background:var(--fill);display:grid;place-items:center;color:var(--ink-strong);cursor:pointer;flex:none;border:0}
+.ex:hover{background:var(--frame)}
+.chead .ex{margin-left:auto}
+
+/* ===== 챔버 시트 ===== */
+.sheet{flex:none;background:var(--card);border:1px solid var(--cardline);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(20,22,45,.05)}
+.strip{display:flex;justify-content:space-between;align-items:center;height:44px;padding:0 14px;border-bottom:1px solid var(--frame);font-family:var(--mono);flex:none}
+.strip .dwg{font-size:11px;color:var(--ink);letter-spacing:.1em}
+.strip .alarm{font-size:10.5px;font-weight:700;color:var(--pink);background:rgba(255,99,146,.1);border:1px solid #f3b8cd;border-radius:5px;padding:2px 8px}
+.bodyx{display:flex;gap:10px;padding:14px;align-items:stretch;height:284px;flex:none}
+.draw{width:62%;display:flex}
+.bp{flex:1;display:flex;border:1px solid var(--bpgrid);border-radius:8px;background:var(--bppaper);
+  background-image:linear-gradient(var(--bpgrid) 1px,transparent 1px),linear-gradient(90deg,var(--bpgrid) 1px,transparent 1px);
+  background-size:22px 22px;padding:8px;
+  --ink:var(--blue);--ink-strong:var(--blue-deep);--label:#5fb8e8;--faint:#b9e2f7;--text:var(--blue-deep);--alarm:var(--pink);--alarm-deep:var(--pink-deep)}
+.bp svg{width:100%;height:100%;display:block;margin:auto}
+.bp svg text{paint-order:stroke;stroke:var(--bppaper);stroke-width:2.4px;stroke-linejoin:round;font-weight:600}
+.sidep{width:38%;display:flex;flex-direction:column;gap:8px}
+.pnl{flex:1;display:flex;flex-direction:column;justify-content:center;border:1px solid var(--frame);background:var(--box);border-radius:8px;padding:10px 12px}
+.pnl.line{border:1px solid var(--frame);background:transparent}
+.pnl .k{font-size:11px;color:var(--label)}
+.pnl .v{font:500 20px var(--mono);margin-top:2px;color:var(--navy)}
+.pnl .v.warn{color:var(--pink)}
+.pnl .v small{font-size:10px;color:var(--faint)}
+.shr{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;line-height:16px;color:var(--text);margin:7px 0 4px}
+.shr b{font:400 10px var(--mono);color:var(--faint);font-weight:400;margin-left:4px}
+.shr .sv{color:var(--label);font-family:var(--mono);font-size:10.5px}
+.sbar{height:4px;background:var(--fill);border-radius:2px;overflow:hidden}
+.sbar i{display:block;height:4px;border-radius:2px;background:var(--mint)}
+.nelstrip{display:flex;flex-direction:column;gap:2px;border-left:4px solid var(--pink-deep);background:var(--pink);padding:9px 12px;border-radius:0;font:600 12.5px var(--mono);color:#fff}
+.nelstrip .nsub{font:500 10.5px var(--mono);opacity:.92}
+
+/* ===== SPC 플로우 ===== */
+.fhead{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 18px 4px}
+.fbig{font:700 30px var(--mono);color:var(--navy);letter-spacing:-.02em}
+.fbig span{font-size:14px;color:var(--faint);font-weight:400}
+.fdelta{font:400 11px var(--mono);color:var(--pink);margin-top:5px}
+.fleetd{font:400 9.5px var(--mono);color:var(--label);margin-top:3px;letter-spacing:.03em}
+.runchip{font:700 9px var(--mono);letter-spacing:.1em;border-radius:5px;padding:2px 7px;margin-left:10px}
+.runchip.run{background:var(--mint-soft);color:var(--mint-deep)}
+.runchip.pm{background:var(--fill);color:var(--faint)}
+.runchip.idle{background:var(--blue-soft);color:var(--blue-deep)}
+.flegend{display:flex;gap:14px;align-items:center;padding-top:6px;flex-wrap:wrap;justify-content:flex-end}
+.lgi{display:flex;align-items:center;gap:6px;font:400 9.5px var(--mono);color:var(--label);letter-spacing:.04em;white-space:nowrap}
+.lgi i{width:10px;height:10px;border-radius:50%;flex:none;box-sizing:border-box;display:inline-block}
+.swf{background:var(--blue)}
+.sww{background:repeating-linear-gradient(45deg,rgba(255,99,146,.55) 0 2px,transparent 2px 4px);border:1px solid #f5b8ca;border-radius:3px}
+.swd{border:1.6px dashed var(--pink)}
+/* 차트 카드가 좌측 열의 남는 높이를 흡수 — svg가 카드에 맞춰 늘어남 (여백 방지) */
+.card.flow{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
+.exabs{position:absolute;top:12px;right:16px} /* 아이콘 중앙(=top+15) = 범례 텍스트 중앙(≈27px) 정렬 */
+.fchart{position:relative;padding:5px 0 10px;flex:1;min-height:212px}
+.fchart svg{display:block;width:100%;height:100%}
+.ftt{position:absolute;top:0;left:60.7%;transform:translateX(-50%);background:var(--card);border:1px solid var(--frame);border-radius:8px;box-shadow:0 6px 16px rgba(23,50,74,.12);padding:3px 8px;font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;text-align:center;z-index:2}
+.ftt .sub{font:500 9.5px var(--mono);color:var(--label);margin-top:1px}
+.ftarget{font:600 10px var(--mono);color:var(--ink-strong);letter-spacing:.04em}
+
+/* 센서 전환 칩 (차트 범례 아래) — 위반 진행 센서엔 핑크 점 */
+.ssel{display:flex;gap:5px}
+.sbtn{position:relative;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border:0;border-radius:0;background:var(--fill);font:600 9.5px var(--mono);letter-spacing:.06em;color:var(--ink-strong);cursor:pointer}
+.sbtn:hover{background:#e3ecf3}
+.sbtn.on{background:var(--navy);color:#fff}
+.sbtn .sd{width:5px;height:5px;border-radius:50%;flex:none}
+.sbtn .sd.ok{background:#c3cdd6}
+.sbtn .sd.warn{background:var(--alarm)}
+.sbtn .sd.crit{background:var(--pink);opacity:var(--blinkO)} /* 전역 시계 구독 — 재렌더/리마운트에도 위상 불변 */
+
+/* ===== VaR 슬림 ===== */
+.varrow{display:flex;align-items:center;gap:14px;padding:13px 16px;flex-wrap:nowrap}
+.varrow .vlb{font:500 9px var(--mono);letter-spacing:.1em;color:var(--faint)}
+.varrow .vbig{font:700 23px var(--mono);letter-spacing:-.02em;color:var(--navy);margin-top:2px}
+.vdiv{width:1px;height:34px;background:var(--frame);flex:none}
+.vmini{text-align:center}
+.vmini .k{font:400 8.5px var(--mono);color:var(--faint);letter-spacing:.06em}
+.vmini .v{font:700 14px var(--mono);color:var(--text);margin-top:2px}
+.gopill{height:35px;padding:0 16px;border-radius:9px;background:var(--navy);color:#fff;font-weight:600;font-size:12.5px;border:0;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex:none}
+.gopill:hover{background:#0f2536}
+
+/* ===== Decision Queue (작업 지시서) ===== */
+.qgroup{display:flex;align-items:center;gap:8px;font:700 9.5px var(--mono);letter-spacing:.16em;color:var(--faint);padding:4px 20px 4px}
+.qgroup::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--frame),transparent)}
+.qrow{display:flex;align-items:center;gap:10px;padding:8px 20px;cursor:pointer}
+.qrow + .qrow{border-top:1px solid var(--hairline)}
+.qrow:hover{background:var(--blue-soft)}
+.qrow:hover .qt{color:var(--blue-deep)}
+.qidx{font:400 9.5px var(--mono);color:#c3ccd6;width:28px;flex:none}
+.qtick{width:3px;height:26px;border-radius:2px;flex:none}
+.qtick.crit{background:var(--pink-deep)}
+.qtick.warn{background:var(--alarm)}
+.qava{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff}
+.qbd{min-width:0}
+.qbd .qt{font-weight:500;font-size:12.5px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qbd .qs{font:400 9.5px var(--mono);color:var(--faint);margin-top:2px}
+.qlead{flex:1;border-bottom:1.5px dotted var(--frame);margin:0 4px;transform:translateY(3px);min-width:14px}
+.qage{font:700 12px var(--mono);color:var(--navy);flex:none}
+.qage.crit{color:var(--pink)}
+.qage.over{background:var(--pink-soft);color:var(--pink-deep);font-weight:700;border-radius:6px;padding:2px 7px}
+.qst{font:700 9.5px var(--mono);letter-spacing:.08em;flex:none;width:80px;text-align:right}
+.qst.reopen{color:var(--pink)}
+.qst.analyzing{color:var(--navy)}
+.qst.pending{color:#a7b7c6}
+.qfoot{display:flex;align-items:center;padding:10px 20px;border-top:1px solid var(--hairline);font:400 10.5px var(--mono);color:var(--faint)}
+.qfoot a{margin-left:auto;color:var(--blue-deep);font-weight:600;text-decoration:none;font-size:11px}
+
+/* ===== 카드 내부 스크롤 (큐·조치 — 가용 높이에 맞춰 축소, 넘치면 스크롤) ===== */
+/* 큐 목록은 4행 + 5행 일부(peek)에서 잘리게 상한 — 잘린 행이 "더 있음 → 스크롤" 신호 */
+.qscroll{flex:1;min-height:0;max-height:300px;overflow-y:auto}
+.qfoot{margin-top:auto}
+.card.acts{flex:0 1 auto;display:flex;flex-direction:column;min-height:0}
+/* 3행 표시 — 4건째부터 peek 스크롤 */
+.ascroll{max-height:216px;min-height:70px;overflow-y:auto}
+.qscroll::-webkit-scrollbar,.ascroll::-webkit-scrollbar{width:6px}
+.qscroll::-webkit-scrollbar-thumb,.ascroll::-webkit-scrollbar-thumb{background:var(--frame);border-radius:3px}
+.qscroll::-webkit-scrollbar-track,.ascroll::-webkit-scrollbar-track{background:transparent}
+
+/* ===== 조치 & 효과 (closed loop 검증) ===== */
+.arow{display:flex;align-items:center;gap:10px;padding:9px 16px 9px 20px}
+.ascroll .arow:first-child{padding-top:4px}
+.arow + .arow{border-top:1px solid var(--hairline)}
+.arow:hover{background:var(--blue-soft)}
+.atype{font:700 9px var(--mono);letter-spacing:.08em;border-radius:5px;padding:3px 7px;flex:none}
+.atype.lim{background:var(--pink-soft);color:var(--pink-deep)}
+.atype.rcp{background:var(--mint-soft);color:var(--mint-deep)}
+.atype.mnt{background:var(--alarm-soft);color:var(--alarm-deep)}
+.abd{min-width:0;flex:1}
+.abd .at{font-weight:500;font-size:12.5px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.abd .asub{font:400 9px var(--mono);color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.afx{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:9.5px;color:var(--ink-strong);white-space:nowrap;overflow:hidden}
+.afx .abar{width:56px;height:4px;border-radius:3px;background:var(--fill);flex:none;overflow:hidden}
+.afx .abar i{display:block;height:100%;border-radius:3px}
+.afx .abar i.applied{background:var(--blue)}
+.afx .abar i.verifying{background:var(--alarm)}
+.afx .abar i.confirmed{background:var(--mint)}
+.afx .acnt{color:var(--label);flex:none}
+.afx .am{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+
+/* 오버플로 텍스트 순환 표시 — 끝까지 흐른 뒤 처음으로 복귀 (넘칠 때만 동작) */
+.scrolly{overflow:hidden;white-space:nowrap;text-overflow:clip;min-width:0}
+.scrolly .mq{display:inline-block;animation:mq 8s linear infinite}
+/* 끝까지 흐른 뒤 되감기 없이 즉시 처음으로 점프 */
+@keyframes mq{0%,16%{transform:translateX(0)}62%,88%{transform:translateX(var(--mq))}88.01%,100%{transform:translateX(0)}}
+.apill{font:700 9.5px var(--mono);border-radius:6px;padding:3px 8px;flex:none}
+.apill.applied{background:var(--blue-soft);color:var(--blue-deep)}
+.apill.verifying{background:var(--alarm-soft);color:var(--alarm-deep)}
+.apill.confirmed{background:var(--mint-soft);color:var(--mint-deep)}
+
+/* ===== 사이드바 VALUE AT RISK (VaR — Decision Queue보다 후순위 배치) ===== */
+.vside{margin:auto 12px 10px;background:var(--paper);border:1px solid var(--frame);border-radius:14px;padding:11px 13px}
+.vside .cap{font:400 9px var(--mono);letter-spacing:1.4px;color:var(--faint)}
+.vside .amt{font:700 17px var(--mono);color:var(--navy);letter-spacing:-.5px;margin-top:4px}
+.vside .vrow{display:flex;gap:10px;margin-top:6px;font:400 9.5px var(--mono);color:var(--label)}
+.vside .vrow b{font-weight:700;color:var(--navy)}
+
+/* ===== 라이브 펄스 ===== */
+.pulse{display:flex;align-items:stretch;overflow:hidden;flex:none}
+.pviewport{flex:1;min-width:0;overflow:hidden;height:41px}
+/* 가로 티커 — 7칸 렌더(뷰포트=6칸), 새 wafer가 왼쪽에서 들어오며 전체를 오른쪽으로 한 칸 밈 */
+.prow{display:flex;align-items:center;height:41px;width:calc(100% * 7 / 6)}
+.prow.slide{animation:pushright .5s cubic-bezier(.22,.8,.36,1)}
+@keyframes pushright{from{transform:translateX(calc(-100% / 7))}to{transform:translateX(0)}}
+.pcell{display:flex;align-items:center;gap:7px;padding:0 10px;height:41px;border-right:1px solid var(--hairline);white-space:nowrap;font-family:var(--mono);flex:1 1 0;min-width:0;overflow:hidden}
+.pcell .w{font-size:10px;color:var(--label)}
+.pcell .pch{font:600 9px var(--mono);color:var(--ink-strong);background:var(--fill);padding:2px 5px;border-radius:4px;flex:none}
+.pcell .c{font-weight:700;font-size:11.5px;color:var(--mint-deep)}
+.schip{font-size:9.5px;font-weight:700;border-radius:6px;padding:2px 7px}
+.schip.ok{background:var(--fill);color:var(--label)} /* ISA-101: 정상 wafer = 무채색 */
+.schip.warn{background:var(--alarm-soft);color:var(--alarm-deep)}
+.plabel{display:flex;align-items:center;gap:8px;padding:0 16px;height:41px;flex:none}
+.plabel .t{font-weight:600;font-size:12.5px;color:var(--navy)}
+.live{width:7px;height:7px;border-radius:50%;background:var(--good)}
+
+/* ===== Copilot 오버레이 ===== */
+.dock{position:fixed;right:22px;bottom:88px;width:340px;max-height:calc(100vh - 120px);background:var(--card);border:1px solid #edf0f4;border-radius:16px;box-shadow:0 24px 60px rgba(23,50,74,.28);overflow:auto;opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .22s,transform .22s;z-index:60}
+.app.open .dock{opacity:1;transform:none;pointer-events:auto}
+.dockin{padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px}
+.dockh{display:flex;align-items:center;gap:8px}
+.dockh .t{font-weight:600;font-size:14.5px;color:var(--navy)}
+.dockh .on{font:500 9.5px var(--mono);color:var(--mint);letter-spacing:.08em}
+.dockh .x{margin-left:auto;width:28px;height:28px;border-radius:8px;background:var(--fill);border:1px solid var(--frame);display:grid;place-items:center;color:var(--ink-strong);cursor:pointer}
+.ctx{display:flex;gap:6px}
+.cchip{font:500 10px var(--mono);color:var(--ink-strong);background:var(--fill);border:1px solid var(--frame);border-radius:6px;padding:3px 8px}
+.cpanel{border:1px solid var(--frame);border-radius:10px;background:var(--paper);padding:12px 13px}
+.cpanel .h{display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px;color:var(--navy)}
+.cpanel .h i{width:8px;height:8px;border-radius:50%;background:var(--mint);display:inline-block}
+.cpanel p{font-size:12px;line-height:1.5;color:var(--text);margin-top:6px}
+.cpanel .src{font:400 9.5px var(--mono);color:var(--faint);margin-top:7px}
+.csrcs{display:flex;gap:8px}
+.csrc{flex:1;border:1px solid var(--frame);border-radius:9px;padding:8px 10px;background:var(--box)}
+.csrc .k{font:500 9px var(--mono);color:var(--label);letter-spacing:.06em}
+.csrc .v{font-size:11px;color:var(--text);margin-top:3px;font-family:var(--mono)}
+.cstats{display:flex;border:1px solid var(--frame);border-radius:10px;padding:10px 6px}
+.cstat{flex:1;text-align:center}
+.cstat .v{font:700 14px var(--mono);color:var(--text)}
+.cstat .k{font:400 8.5px var(--mono);color:var(--faint);margin-top:2px;letter-spacing:.06em}
+.ask{margin-top:auto;display:flex;align-items:center;gap:9px;border:1px solid var(--frame);border-radius:10px;background:var(--card);padding:10px 12px;color:var(--faint);font-size:12px}
+.ask .snd{margin-left:auto;width:24px;height:24px;border-radius:7px;background:var(--mint);color:#fff;display:grid;place-items:center;flex:none}
+
+/* ===== 플로팅 말풍선 ===== */
+.fab{position:fixed;right:22px;bottom:22px;width:54px;height:54px;border-radius:50%;background:var(--navy);color:#fff;border:0;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 26px rgba(23,50,74,.35);z-index:50;transition:transform .2s}
+.fab:hover{transform:translateY(-2px)}
+.fab .mintdot{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 2px var(--navy)}
+.app.open .fab svg.bub{display:none}
+.fab svg.chv{display:none}
+.app.open .fab svg.chv{display:block}
+
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#c8d6e0;border-radius:9px;border:2px solid var(--canvas)}
+
+/* =============================================================================
+   다크 변주 — "블루프린트 다크" (정본: blueprint_다크_챔버패널.html)
+   심해 네이비 #0a1626 + 시안 잉크 #7ec8e3 + 앰버 #ffb454.
+   원칙: 토큰만 뒤집는다 — 신호(핑크·앰버·민트)는 다크에서 '더 밝은 쪽'이 강조(deep).
+   ========================================================================== */
+.app.dark{
+  --canvas:#0a1626;
+  --paper:#0d1e33;
+  --card:#10233c;
+  --panel:#0c1b2f;
+  --navy:#eaf4fc;
+  --text:#c6dcec;
+  --label:#8fb8cc;
+  --faint:#557a90;
+  --frame:#1c3a52;
+  --fill:#16304a;
+  --ink:#7ec8e3;
+  --ink-strong:#a9d9ec;
+  --alarm:#ffb454;
+  --alarm-deep:#ffcf8f;
+  --alarm-soft:rgba(255,180,84,.14);
+  --alarm-bright:#ffcf8f;
+  --blue:#38bdf8;
+  --blue-deep:#7dd3fc;
+  --blue-bright:#0ea5e9;
+  --blue-soft:rgba(56,189,248,.12);
+  --pink:#ff6f9d;
+  --pink-deep:#ff9dbd;
+  --pink-bright:#ffc3d7;
+  --pink-soft:rgba(255,111,157,.15);
+  --mint:#2fd7b3;
+  --mint-deep:#7ce8cf;
+  --mint-soft:rgba(47,215,179,.13);
+  --mint-bright:#a9f2e0;
+  --good:#39c08e;
+  --box:rgba(255,255,255,.04);
+  --halo:#0a1626;
+  --axis:#2b4b6b;
+  --trace:#7ec8e3;
+  --bpgrid:#1c3a52;
+  --bppaper:#0c1e34;
+  --hairline:#182f47;
+  --cardline:#1b3650;
+}
+/* 다크 예외 — 그림자는 깊게, '네이비 필' 액티브는 시안 잉크 필로 반전 */
+.app.dark .card,.app.dark .sheet{box-shadow:0 8px 28px rgba(0,0,0,.42)}
+.app.dark .chch,.app.dark .search,.app.dark .icon-btn,.app.dark .bpill{box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.app.dark .chch.sel{background:var(--ink);color:#07131e}
+.app.dark .chch.sel .sig{color:#0f2c42}
+.app.dark .sbtn.on{background:var(--ink);color:#07131e}
+.app.dark .sbtn:hover{background:#20405f}
+.app.dark .gopill{background:var(--ink);color:#07131e}
+.app.dark .fab{background:var(--ink);color:#07131e}
+.app.dark .nav-item{color:#6f93aa}
+.app.dark .nav-item svg{stroke:#5d829b}
+.app.dark .strip .alarm{border-color:rgba(255,111,157,.35)}
+.app.dark .nelstrip{background:#d13d70;border-left-color:var(--pink-bright)}
+.app.dark .ftt{box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.app.dark .bp{--label:#5fb8e8;--faint:#3d6980;--text:#bfe3f0;--ink:#7ec8e3;--ink-strong:#bfe3f0}
+.app.dark ::-webkit-scrollbar-thumb{background:#2b4a68;border-color:var(--canvas)}
+
+/* =============================================================================
+   화면 확장 (S2~S11·Settings) — 공통 스크린 문법
+   ========================================================================== */
+.scr{display:flex;flex-direction:column;gap:12px;min-height:0}
+.scrh{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.scrh .t{font-weight:700;font-size:19px;color:var(--navy);letter-spacing:-.01em}
+.scrh .c{font-size:10px;color:var(--faint);letter-spacing:.08em;margin-top:3px}
+.scrh .gopill{margin-left:auto}
+.scrfoot{padding:2px 4px;font-size:10px;color:var(--faint);letter-spacing:.04em}
+.fchips{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.fchip{height:28px;padding:0 11px;border:1px solid var(--hairline);border-radius:9px;background:var(--card);box-shadow:0 2px 8px rgba(23,50,74,.06);font:600 10.5px var(--mono);color:var(--ink-strong);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.fchip:hover{background:var(--fill)}
+.fchip.on{background:var(--navy);color:#fff}
+.app.dark .fchip.on{background:var(--ink);color:#07131e}
+
+/* S3 인시던트 */
+.irow{padding:11px 18px}
+.rgb{font:700 8.5px var(--mono);color:var(--blue-deep);background:var(--blue-soft);border-radius:4px;padding:2px 6px;margin-left:8px;letter-spacing:.06em}
+.isc{position:relative;width:86px;height:16px;background:var(--fill);border-radius:4px;overflow:hidden;flex:none;display:inline-flex;align-items:center}
+.isc i{position:absolute;left:0;top:0;bottom:0;opacity:.28}
+.isc b{position:relative;font-size:10px;margin-left:auto;padding-right:6px;color:var(--navy)}
+.askai{height:24px;padding:0 10px;border:1px dashed var(--frame);border-radius:6px;background:transparent;color:var(--ink-strong);font-size:10px;font-weight:600;cursor:pointer;flex:none}
+.askai:hover{background:var(--mint-soft);border-color:var(--mint)}
+.askai.done{border-style:solid;border-color:var(--mint);color:var(--mint-deep);cursor:default}
+.qst.verifying{color:var(--alarm-deep)}
+.qst.closed{color:var(--faint)}
+
+/* S4 승인 체인 (TypeBot형 가로) */
+.chain{display:flex;gap:0;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
+.cnode{flex:0 0 240px;background:var(--card);border:1px solid var(--cardline);border-radius:18px;box-shadow:0 6px 24px rgba(20,22,45,.05);padding:12px;display:flex;flex-direction:column;gap:7px}
+.cnode.wide{flex:0 0 300px}
+.cnh{font:700 9.5px var(--mono);letter-spacing:.14em;color:var(--faint);padding-bottom:2px}
+.cnfoot{font-size:9px;color:var(--faint);margin-top:auto;padding-top:6px}
+.carrow{flex:0 0 30px;text-align:center;color:var(--faint);font-size:15px;padding-top:64px}
+.cinc{text-align:left;border:1px solid var(--hairline);border-radius:10px;background:transparent;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;position:relative}
+.cinc .qtick{position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px}
+.cinc .tt{font-size:11.5px;font-weight:600;color:var(--navy);padding-left:8px}
+.cinc .ss{font-size:9px;color:var(--faint);padding-left:8px}
+.cinc.on{border-color:var(--ink);background:var(--blue-soft)}
+.cinc:hover{background:var(--fill)}
+.verdict{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--navy)}
+.verdict .vp{width:9px;height:9px;border-radius:50%}
+.vreason{font-size:11.5px;line-height:1.55;color:var(--text)}
+.ev{font-size:11px;line-height:1.5;color:var(--label);border-left:2.5px solid var(--frame);padding:2px 0 2px 9px}
+.ev i{font-style:normal;font-weight:700;font-size:9px;color:var(--ink-strong);margin-right:6px}
+.ev.counter{border-left-color:var(--alarm)}
+/* 증거층 (2026-07-31) — 서사(위)와 시각적으로 갈라 보이게: 얇은 상단 구분선 + 조밀한 행 */
+.evl{margin-top:9px;border-top:1px dashed var(--hairline);padding-top:7px}
+.evl .evh{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--faint);margin-bottom:5px}
+.evrow{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--label);padding:2px 0}
+.evrow .sid{font-weight:700;color:var(--navy);min-width:34px}
+.evrow .rid{font-size:9px;color:var(--faint);min-width:22px}
+.evrow.crit .sid{color:var(--alarm-deep)}
+.evrow.fresh{background:var(--blue-soft);border-radius:4px;padding:2px 5px}
+.stale{font-size:9px;font-weight:700;color:var(--alarm-deep);background:var(--alarm-soft);border-radius:4px;padding:2px 6px}
+.rebtn{font-size:9.5px;font-weight:700;color:var(--ink-strong);background:transparent;border:1px solid var(--hairline);border-radius:6px;padding:3px 9px;cursor:pointer;margin-left:auto}
+.rebtn:hover{border-color:var(--ink)}
+.rebtn:disabled{color:var(--faint);cursor:default}
+.ev.counter i{color:var(--alarm-deep)}
+.opt{text-align:left;border:1px solid var(--hairline);border-radius:12px;background:transparent;padding:9px 11px;cursor:pointer}
+.opt .oh{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--navy)}
+.opt .rec{font-size:8.5px;font-weight:700;color:var(--mint-deep);background:var(--mint-soft);border-radius:4px;padding:2px 6px}
+.opt .oa{font-size:10.5px;color:var(--label);margin-top:4px}
+.opt .orj{font-size:10px;color:var(--faint);margin-top:4px;font-style:normal}
+.opt.on{border-color:var(--ink);background:var(--blue-soft)}
+.opt.rej{opacity:.62}
+.dbtn{height:34px;border:1px solid var(--hairline);border-radius:9px;background:transparent;font-weight:600;font-size:12.5px;color:var(--navy);cursor:pointer}
+.dbtn:hover{background:var(--fill)}
+.dbtn.on{border-width:1.6px}
+.dbtn.approve.on{border-color:var(--mint);background:var(--mint-soft);color:var(--mint-deep)}
+.dbtn.modify.on{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.dbtn.reject.on{border-color:var(--pink);background:var(--pink-soft);color:var(--pink-deep)}
+.dbtn.escalate.on{border-color:var(--alarm);background:var(--alarm-soft);color:var(--alarm-deep)}
+.cinput{width:100%;border:1px solid var(--frame);border-radius:9px;background:var(--card);color:var(--text);font:12px var(--sans);padding:8px 10px;outline:none;resize:vertical;min-height:34px}
+.tgl{display:flex;gap:6px}
+.tgl .fchip{flex:1;flex-direction:column;justify-content:center;gap:2px;height:auto;min-height:38px;padding:6px 10px;text-align:center;line-height:1.25} /* 재분석/종료 균등폭·2줄 고정 (2026-07-20) */
+.tgl .fchip .sub{font-size:9px;font-weight:500;opacity:.75}
+.cdone{border:1px solid var(--mint);background:var(--mint-soft);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+
+/* 테이블 (S6) */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{font:700 9.5px var(--mono);letter-spacing:.1em;color:var(--faint);text-align:left;padding:10px 10px;border-bottom:1px solid var(--frame)}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--hairline);color:var(--text)}
+.tbl tbody tr{cursor:pointer}
+.tbl tbody tr:hover{background:var(--blue-soft)}
+.tbl tbody tr.on{background:var(--blue-soft)}
+.cb{display:inline-block;width:14px;height:14px;border:1.6px solid var(--frame);border-radius:4px;background:var(--card)}
+.cb.on{background:var(--ink);border-color:var(--ink);box-shadow:inset 0 0 0 2.5px var(--card)}
+
+/* 공통 행 (S7·S8·Settings) */
+.krow{display:flex;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--hairline);font-size:12.5px;color:var(--text)}
+.krow:first-of-type{border-top:0}
+.krow b{font-weight:600;color:var(--navy)}
+.lhrow{display:flex;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--hairline);font-size:12px}
+.lv{font-weight:700;width:26px;color:var(--faint)}
+.lv.cur{color:var(--pink-deep)}
+
+/* S7 Qual */
+.phasebar{display:flex;gap:6px;margin-left:auto}
+.ph{padding:5px 11px;border-radius:7px;background:var(--fill);color:var(--faint);font-size:10px;font-weight:700;letter-spacing:.06em}
+.ph.on{background:var(--alarm-soft);color:var(--alarm-deep)}
+.ph.done{background:var(--mint-soft);color:var(--mint-deep)}
+.qwrow{display:flex;gap:8px;padding:6px 16px 12px}
+.qwaf{flex:1;border:1px dashed var(--frame);border-radius:10px;padding:8px 6px;text-align:center}
+.qwaf.done{border-style:solid;background:var(--box)}
+.branch3{display:flex;gap:8px;padding:10px 16px}
+.bopt{flex:1;border:1px solid var(--hairline);border-radius:11px;background:transparent;padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;text-align:center}
+.bopt b{font-size:12.5px;color:var(--navy)}
+.bopt span{font-size:9.5px;color:var(--faint);line-height:1.4}
+.bopt.on{border-color:var(--ink);background:var(--blue-soft)}
+
+/* S8 KPI */
+.statc{padding:14px 16px}
+.statc .big{font:700 26px var(--mono);color:var(--navy);margin-top:4px;letter-spacing:-.02em}
+.statc .sub{font-size:9.5px;color:var(--faint);margin-top:2px;letter-spacing:.06em}
+.brow{display:flex;align-items:center;gap:10px;padding:7px 16px;font-size:11.5px}
+.brow .bl{width:64px;color:var(--ink-strong);font-weight:600;font-size:10.5px}
+.brow .bbar{flex:1;height:8px;background:var(--fill);border-radius:4px;overflow:hidden}
+.brow .bbar i{display:block;height:100%;border-radius:4px}
+.brow .bv{width:22px;text-align:right;font-weight:700;color:var(--navy)}
+.spark{margin-left:auto;display:flex;align-items:flex-end;gap:3px;height:26px}
+/* min-height: 0 인 구간도 자리를 보여준다 — 없으면 0px 막대가 투명해져, 데모에서 흔한
+   "한 구간에만 값" 모양이 **오른쪽에 막대 하나만 뜬 고장난 차트**로 읽힌다. */
+.spark i{width:9px;min-height:1px;background:var(--blue);opacity:.75;border-radius:2px 2px 0 0}
+
+/* S11 시뮬레이터 */
+.srow{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--hairline)}
+.srow:first-of-type{border-top:0}
+.stag{flex:none;font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--faint);background:var(--fill);border-radius:5px;padding:3px 7px}
+.stag.main{color:var(--blue-deep);background:var(--blue-soft)}
+.runbtn{flex:none;height:28px;min-width:78px;padding:0 12px;border:1px solid var(--frame);border-radius:8px;background:var(--card);font-size:10px;font-weight:700;color:var(--ink-strong);cursor:pointer;letter-spacing:.06em;white-space:nowrap}
+.runbtn.live{cursor:default}
+.runbtn:hover{background:var(--fill)}
+.runbtn.live{border-color:var(--mint);color:var(--mint-deep);background:var(--mint-soft)}
+
+/* Settings 토글 */
+.switch{margin-left:auto;width:40px;height:22px;border-radius:999px;border:0;background:var(--fill);position:relative;cursor:pointer;transition:background .15s}
+.switch i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .15s}
+.switch.on{background:var(--ink)}
+.switch.on i{left:21px}
+
+/* ===== 헤더 드롭다운 (검색·알림) ===== */
+.searchwrap{position:relative;flex:none}
+.sdrop{position:absolute;top:42px;left:0;right:0;background:var(--card);border:1px solid var(--cardline);border-radius:14px;box-shadow:0 14px 40px rgba(20,22,45,.18);padding:6px;z-index:60;max-height:340px;overflow:auto}
+.sitem{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:12px;color:var(--text)}
+.sitem:hover{background:var(--fill)}
+.sitem .k{font:700 8.5px var(--mono);color:var(--faint);width:30px;flex:none;letter-spacing:.06em}
+.sitem .s{margin-left:auto;font:400 9.5px var(--mono);color:var(--faint);flex:none}
+.snull{padding:12px;font-size:11px;color:var(--faint);text-align:center}
+.bellwrap{position:relative}
+.ddback{position:fixed;inset:0;z-index:50}
+.ndrop{position:absolute;top:44px;right:0;width:340px;background:var(--card);border:1px solid var(--cardline);border-radius:14px;box-shadow:0 14px 40px rgba(20,22,45,.18);padding:6px;z-index:60}
+.ndh{font:700 9.5px var(--mono);letter-spacing:.1em;color:var(--faint);padding:7px 10px 5px}
+.ndf{padding:8px 10px 6px;font:700 10.5px var(--mono);color:var(--blue-deep);cursor:pointer;text-align:right;border-top:1px solid var(--hairline);margin-top:4px}
+.nitem{align-items:flex-start}
+.ndf:hover{color:var(--ink-strong)}
+
+
+/* =============================================================================
+   인트로(ToolIntro) 이식분 — upstream/feat/front-intro-overview styles.css 760~1020
+   2026-08-13 발표 시연용. **인트로 화면 하나만** 얹는 최소 이식이다.
+   원본 브랜치의 나머지 재편(종합현황·챔버시간축·사이드바 개편)은 가져오지 않았다 —
+   라이브 App.tsx 의 RtdBanner·SpcScreen 을 잃지 않으려는 선택.
+   포함: 슬라이딩 트랙(.stage/.track/.pane) · 인트로 · 히트스팟 · 콜아웃 · 추적모드
+   ============================================================================= */
+/* ══ 장비 전경 (ToolOverview) — 1단계 뎁스 ═══════════════════════════════════
+   ISA-101: 정상 = 무채색(오버레이 없음) / 유채색 = 신호에만.
+   새 색을 만들지 않는다 — 상태는 기존 --alarm(warning)·--pink(critical) 그대로.
+   점멸은 전역 시계 --blinkO 구독(헤더 칩·센서 점과 위상 동기). */
+
+/* ── 슬라이딩 트랙 ─────────────────────────────────────────────────────────────
+   인트로와 대시보드를 위아래로 붙여 놓고 transform 으로 이동한다. 화면 교체가
+   아니라 이동이라 ① 모션이 "페이지가 아래로 내려간다"로 읽히고 ② 인트로 상태
+   (선화 로드·hover)가 유지된다. 높이를 % 로만 잡아 헤더 높이에 묶이지 않는다. */
+.stage{flex:1;min-height:0;overflow:hidden}
+.track{height:200%;display:flex;flex-direction:column;
+  transition:transform .68s cubic-bezier(.66,0,.34,1)}
+.pane{height:50%;min-height:0;display:flex;flex-direction:column;background:var(--canvas)}
+.app.atintro .track{transform:translateY(0)}
+.app:not(.atintro) .track{transform:translateY(-50%)}
+
+/* 화면 밖 pane 은 슬라이딩이 끝난 뒤 숨긴다. 이유는 접근성이 아니라 레이아웃 안전:
+   overflow:hidden 안의 요소에 탭 포커스가 닿으면 브라우저가 컨테이너를 스크롤해
+   transform 으로 잡은 위치가 깨진다. 지연을 둬 들어오는 pane 은 즉시 보이게 한다. */
+.pane{visibility:hidden;transition:visibility 0s linear .68s}
+.app.atintro .track>.pane:first-child,
+.app:not(.atintro) .track>.pane:last-child{visibility:visible;transition-delay:0s}
+
+/* 인트로에서는 코파일럿을 접는다 — 상단바가 하단으로 내려와 FAB 과 겹치고,
+   인트로의 질문("어느 챔버가 아픈가")에 코파일럿은 아직 답할 맥락이 없다. */
+.app.atintro .fab,.app.atintro .dock{opacity:0;pointer-events:none}
+
+/* 인트로에서는 상단바를 **치운다** — 화면 전체를 그림과 하단 매트릭스가 쓴다.
+   (구: 하단으로 내려 붙였으나 인트로에서 쓸 일이 없는 바가 매트릭스 자리를 먹었다.)
+   위로 밀어 올리며 페이드 — 대시보드에서 내려올 때 제자리로 돌아오는 모션이 이어진다.
+   헤더가 비운 60px 은 stage 가 가져간다: margin-bottom:-60px 로 flex 배분에서 60px 을
+   더 받고, transform 으로 그만큼 끌어올려 0~100vh 를 정확히 채운다. */
+.header,.stage{transition:transform .68s cubic-bezier(.66,0,.34,1),
+  margin-bottom .68s cubic-bezier(.66,0,.34,1),opacity .34s ease}
+.app.atintro .header{transform:translateY(-70px);opacity:0;pointer-events:none}
+.app.atintro .stage{transform:translateY(-60px);margin-bottom:-60px}
+
+/* 모션을 원치 않는 사용자 — 이동은 유지하되 즉시 (위치가 곧 상태이므로 끌 수 없다) */
+@media (prefers-reduced-motion:reduce){
+  .track,.header,.stage{transition:none}
+  .pane{transition-duration:0s}
+}
+
+/* ── 인트로: 선화 한 장이 크게 ── */
+/* 배경 격자 = 도면 종이. 잔격자 44px + 굵은 격자 220px(5칸마다) 로 축척감을 준다.
+   토큰(--bpgrid)은 SPC 도면(.bp)과 공유 → 다크 재지정도 함께 따라온다. */
+.intro{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;padding:12px 20px 8px;position:relative;
+  background-color:var(--canvas);
+  background-image:
+    linear-gradient(var(--bpgrid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--bpgrid) 1px,transparent 1px),
+    linear-gradient(var(--bpgrid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--bpgrid) 1px,transparent 1px);
+  background-size:220px 220px,220px 220px,44px 44px,44px 44px;
+  background-position:center center;
+  opacity:1}
+.intro::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,transparent 40%,var(--canvas) 88%)}
+/* max-width = 이 패널에 떼어 준 **레일 폭**. absolute 라 스스로는 자리를 안 차지하지만,
+   실제로 그려지는 폭이 .introart 의 padding-left 보다 넓으면 그만큼 그림 위로 삐져나와
+   좌측 콜아웃의 한계선이 된다. 폭을 묶어 두면 그림을 왼쪽으로 더 붙일 수 있다. */
+.introhead{position:absolute;left:26px;top:14px;z-index:2;max-width:180px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;pointer-events:none}
+/* 계층 경로 — 회사 › 팹 › 라인 › 베이. 장비명 위에 얹어 '어디의 무엇'인지 먼저 준다.
+   레일 폭을 넘으면 줄바꿈 (넘어가는 대신 접힌다) */
+.introbc{display:flex;flex-wrap:wrap;align-items:center;font:600 10px var(--mono);letter-spacing:.11em;color:var(--faint)}
+.introbc i{font-style:normal;margin:0 7px;opacity:.55}
+.introtool{font:700 32px var(--mono);letter-spacing:.02em;color:var(--navy);line-height:1.05}
+.introsub{font:500 10.5px var(--mono);letter-spacing:.09em;color:var(--faint)}
+
+/* 상태 집계 — 색은 '무엇이 심각한지', 숫자는 '몇 개인지'. 둘 다 필요하다.
+   정상 줄까지 색을 주지 않는 것이 ISA-101 — 무채색 점이 기본값이다.
+   (가로 칩 줄로 접어봤다가 되돌렸다 — 세로 목록이 읽기 낫다. 겹침은 폭 할당으로 푼다.) */
+.introroll{list-style:none;margin-top:9px;display:flex;flex-direction:column;gap:1px;
+  background:var(--card);border:1px solid var(--frame);border-radius:11px;padding:5px;
+  box-shadow:0 2px 10px rgba(23,50,74,.06)}
+.irow{display:flex;align-items:center;gap:9px;padding:5px 10px;border-radius:7px;white-space:nowrap}
+.idot{width:8px;height:8px;border-radius:50%;background:var(--neutral);flex:none}
+.iname{font:600 12.5px var(--sans);color:var(--label);min-width:44px}
+.icount{font:700 15px var(--mono);color:var(--navy);min-width:16px;text-align:right}
+.iids{font:600 11px var(--mono);letter-spacing:.04em;color:var(--faint);margin-left:2px}
+
+.irow.warning{background:var(--alarm-soft)}
+.irow.warning .idot{background:var(--alarm)}
+.irow.warning .iname{color:var(--alarm-deep)}
+.irow.warning .iids{color:var(--alarm-deep)}
+/* 이상 줄 — **솔리드 빨강 + 흰 글자**. 첫 화면에서 가장 먼저 눈에 들어와야 한다.
+   점멸은 전역 시계(--blinkO) 구독으로 헤더 칩·챔버 외곽선과 위상 동기. */
+.irow.critical{background:var(--pink)}
+.irow.critical .idot{background:#fff;opacity:var(--blinkO)}
+.irow.critical .iname,.irow.critical .icount{color:#fff}
+.irow.critical .iids{color:rgba(255,255,255,.92)}
+
+/* 선화·히트스팟·콜아웃이 **한 SVG** 안에 있다 (ToolIntro 주석 참고).
+   viewBox 하나로 좌표계가 통일돼 있어 letterbox 여백에 의한 정렬 어긋남이 원천적으로 없다. */
+/* svg 와 알람 매트릭스를 가로로 나눠 담는다 (gap 은 판이 있을 때만 의미가 생긴다).
+   **padding-left = 좌상단 정보 패널(.introhead) 몫으로 떼어 둔 폭.**
+   패널은 absolute 라 레이아웃을 밀지 못한다 — 그냥 SVG 위에 겹칠 뿐이다. 그래서 예전엔
+   padding-top 으로 위를 비워 겹침을 피했는데, 그 방식은 ⓐ 매트릭스(align-self:center)를
+   아래로 밀고 ⓑ 좌측 콜아웃의 높이 상한을 만들었다. **가로로 자리를 떼어 주면 둘 다 풀린다** —
+   SVG 가 패널 오른쪽에서 시작하므로 세로로는 어디든 자유롭다.
+   값 150 — 박스 중앙 정렬(186 = 오른쪽 매트릭스 172 + gap 14)보다 **36px 더 왼쪽**이다.
+   SVG 는 박스 안에서 가운데 정렬되지만 **그려지는 것들이 viewBox 안에서 오른쪽으로 치우쳐
+   있다**: 실제 잉크는 좌측 콜아웃(-482)부터 우측 콜아웃 끝(2954)까지라 중심이 1236 인데
+   viewBox 중심은 1106 이다. 그 차 130 units(≈36px)만큼 박스를 왼쪽으로 당겨야 **보이는
+   것**이 가운데 온다. 박스가 아니라 잉크를 기준으로 잡은 값.
+   좌측 콜아웃은 여기서 대략 248px 에 서고, 패널 레일 우단은 206px(left 26 + max-width 180)
+   이라 40px 남는다. */
+.introart{position:relative;flex:1;min-height:0;display:flex;gap:14px;padding-left:150px}
+.introart>svg{flex:1;min-width:0;height:100%;user-select:none}
+.introart image{-webkit-user-drag:none}
+/* 다크 — 선화를 반전해 장비를 숯빛으로 (2026-08-13).
+   선화 원본은 흰 몸통 + 회색 선(실측 253 / 90)이라 **다크 캔버스(#0a1626)에서 흰 판때기**로
+   떠 있었다. 반전하면 몸통이 어두워지고(29) 선이 밝아져(173) 장비가 배경에 앉으면서
+   형태는 선으로 읽힌다 — 검정으로 덮어 선을 잡아먹는 방식이 아니라는 것이 요점.
+   투명 화소는 알파가 유지되므로 흰 판이 새로 생기지 않는다.
+   ⚠️ 1.0 이 아닌 이유: invert(1) 이면 몸통이 캔버스보다 더 검어(2) 구멍처럼 파여 보인다.
+      .9 는 캔버스(23)보다 아주 살짝 밝아 '놓인 물체'로 읽힌다. 더 검게 하려면 .95~1.0,
+      선을 덜 튀게 하려면 brightness 를 1.1 → .8 쪽으로.
+   PNG 를 다시 만들지 않는 이유는 tools/prep_lineart.py 주석과 같다("톤 조정은 CSS 에서"). */
+.app.dark .introart image{filter:invert(.9) brightness(1.1)}
+
+/* 선화 미배치 — 조용히 빈 화면이 되지 않게 놓을 경로를 보여준다.
+   콜아웃·히트스팟은 그대로 살아 있어 배선 확인은 가능하다. */
+.introart.noart{border:1px dashed var(--frame);border-radius:16px}
+.ovnoart{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;text-align:center;padding:24px;pointer-events:none}
+.ovnoart b{font:700 12.5px var(--mono);letter-spacing:.06em;color:var(--label)}
+.ovnoart code{font:600 12px var(--mono);color:var(--navy);background:var(--alarm-soft);
+  padding:5px 12px;border-radius:7px}
+.ovnoart span{font:500 10px var(--mono);letter-spacing:.05em;color:var(--faint);max-width:420px;line-height:1.6}
+
+.introhint{display:flex;align-items:center;justify-content:center;gap:7px;
+  font:500 10px var(--mono);letter-spacing:.09em;color:var(--faint)}
+.introhint svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round;animation:intronudge 2.4s ease-in-out infinite}
+@keyframes intronudge{0%,72%,100%{transform:translateY(0);opacity:.55}84%{transform:translateY(3px);opacity:1}}
+
+/* ── 히트스팟: 장착 챔버는 상시 보인다 ───────────────────────────────────────
+   왜 정상도 보이는가 — 인트로가 답할 질문이 "슬롯 6 중 몇 개가 돌고 있나"까지이므로
+   장착/미장착이 **개수로 읽혀야** 한다. 이상만 그리면 4장착이 2로 보인다(실사용 피드백).
+   ISA-101 위반이 아니다: 무채색 선은 색 신호가 아니다 — 유채색은 여전히 이상에만 쓴다.
+   구분 문법 = 실선 무채색(장착·정상) / 점선(미장착) / 유채색 굵은 선(주의·심각). */
+.hs{cursor:pointer;outline:none}
+/* 면과 선을 **두 요소로 분리**한 이유: critical 은 선만 점멸시켜야 한다.
+   한 요소에 opacity 를 걸면 넓은 면까지 깜빡여 시선이 쉬지 못한다. */
+/* 면은 hover 때만 — 평시에는 선만 남겨 그림을 가리지 않는다.
+   fill:none 이 아니라 transparent 인 이유: none 은 포인터 이벤트를 받지 않는다. */
+.hs{--tint:var(--neutral-soft)}
+.hsfill{stroke:none;fill:transparent;transition:fill .14s ease}
+.hs:hover .hsfill,.hs:focus-visible .hsfill{fill:var(--tint)}
+.hsring{fill:none;stroke:var(--neutral);stroke-width:7;stroke-linejoin:round;
+  transition:stroke .14s ease,stroke-width .14s ease}
+
+/* hover·focus·선택 → 잉크로 강조 (클릭 가능 신호) */
+.hs:hover .hsring,.hs:focus-visible .hsring,.hs.sel .hsring{stroke:var(--ink);stroke-width:8}
+
+/* 이상 상태 → 상태색 + 굵은 선. hover 보다 우선하도록 뒤에 둔다 */
+.hs.warning{--tint:var(--alarm-soft)}
+.hs.warning .hsring{stroke:var(--alarm);stroke-width:9}
+.hs.critical{--tint:var(--pink-soft)}
+/* 선만 점멸 — 전역 시계(--blinkO) 구독으로 헤더 칩·센서 점과 위상 동기 */
+.hs.critical .hsring{stroke:var(--pink);stroke-width:9;opacity:var(--blinkO)}
+
+/* 가관리(provisional) — **색을 쓰지 않는다.** 이상이 아니므로 유채색은 과하다
+   (ISA-101: 색은 신호에만). 상태는 콜아웃의 'PROVISIONAL' 글자로 전달된다. */
+
+/* 미장착 — 점선. "6챔버인 줄 알았나?"로 읽히지 않게 EMPTY 명시 */
+.hs.empty{pointer-events:none}
+.hs.empty .hsring{stroke:var(--neutral);stroke-width:5;stroke-dasharray:16 14;opacity:.6}
+/* 미장착 주석 — 판은 캔버스색으로 선화를 가리기만 하고, 글자는 소문자·얕은 대비.
+   "여기 뭔가 있다"가 아니라 "여기는 비었다"로 읽혀야 하므로 강조하지 않는다. */
+.hstxbg{fill:var(--canvas);fill-opacity:.82}
+.hstx{fill:var(--neutral);font:600 46px var(--mono);letter-spacing:.06em;text-anchor:middle}
+
+/* ── 콜아웃 라벨: 챔버에서 지시선을 빼 상태 + 감시 축을 적는다 ──────────────────
+   viewBox 를 그림 밖으로 넓혀(ToolIntro PAD_*) 만든 여백에 상자를 놓는다.
+   글자 크기는 원본 좌표 단위 — 화면에서는 약 0.4배로 줄어든다(2142 폭 → 약 860px). */
+.colead{fill:none;stroke:var(--neutral);stroke-width:4;stroke-linejoin:round}
+.coanchor{fill:var(--card);stroke:var(--neutral);stroke-width:4}
+.cobox{fill:var(--card);fill-opacity:.94;stroke:var(--frame);stroke-width:3}
+.coid{fill:var(--navy);font:700 62px var(--mono);letter-spacing:.02em}
+/* 상태 = **챔버 이름의 글자 배경**. 평시는 판이 투명해 이름만 보이고,
+   주의는 옅은 앰버, 이상은 솔리드 빨강 + 흰 글자로 가장 세게 읽힌다.
+   (가관리처럼 이상이 아닌 상태는 색을 쓰지 않는다 — 좌상단 집계표가 개수로 알려준다) */
+.coidbg{fill:transparent}
+.hs.warning .coidbg{fill:var(--alarm-soft)}
+.hs.critical .coidbg{fill:var(--pink)}
+.hs.critical .coid{fill:#fff}
+.corule{stroke:var(--hairline);stroke-width:3}
+/* 아래 3줄의 정체를 밝히는 캡션 — SHAP 기여도 순위가 아니라 감시 센서의 σ 위치다 */
+/* 구 `.cocap`(콜아웃 캡션 "발동 채널 · 14종 중") 제거 (2026-08-08) — 칸 이름이 대신한다 */
+
+/* 축 한 줄 — 기본은 전부 무채색. 위험한 축만 아래에서 색을 덮는다 */
+/* 콜아웃 건수 칸 (2026-08-08 — 구 감시 축 3종 게이지 `.coax`·`.cog*` 자리).
+   종합 현황 표와 **같은 두 열**(심각·주의)이고 색 규칙도 같다: 0 은 옅게 물러나고
+   발동만 눈에 든다. SVG 라 등급색을 `fill` 로 준다. */
+.cocellbg{fill:var(--fill)}
+/* 가운데 정렬 + 한 단 키움 (2026-08-08 요청) — 라벨 28 → 34, 숫자 62 → 78.
+   인트로는 전경 한 장을 멀리서 보는 화면이라 대시보드보다 글자가 커야 읽힌다. */
+.cocellk{fill:var(--faint);font:600 34px var(--mono);letter-spacing:.04em;text-anchor:middle}
+.cocellv{fill:var(--frame);font:700 78px var(--mono);letter-spacing:-.02em;text-anchor:middle}
+.cocellv.on{fill:var(--navy)}
+.cocellv.on.심각{fill:var(--pink)}
+.cocellv.on.주의{fill:var(--alarm-deep,#b8720f)}
+/* 가한계·PM 태그 — 이름 옆. 표의 σ 칸이 하던 일 */
+.cotag{fill:var(--blue,#33739c);font:700 30px var(--mono);letter-spacing:.08em}
+/* 코멘트 말풍선 — **fill 을 안 준 채로 있었다**. SVG `fill` 기본값이 검정이라 옅은 콜아웃
+   위에 새까만 도형 하나가 떠 있었다 (2026-08-08 발견). 숫자(.cocn)와 같은 톤으로 맞춘다 —
+   이건 값이 아니라 "사람이 남긴 말이 있다"는 표식이라 조용해야 한다. */
+/* 결정 대기 표식 — **획(체크)** 이라 fill 이 아니라 stroke 다 (2026-08-08, 구 말풍선 `.cocmt`).
+   ⚠ 구 말풍선은 `fill` 을 안 준 채로 있어 SVG 기본값(검정)이 그대로 나왔었다. 획으로 바뀐
+   지금은 `fill:none` 을 명시해야 같은 사고가 안 난다 — path 는 기본이 '채우기'다. */
+.codec{cursor:pointer}
+.codec path{fill:none;stroke:var(--faint);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;
+  transition:stroke .12s ease}
+/* 과녁 — 투명하되 `pointer-events` 는 받는다. 획 하나로는 클릭할 곳이 너무 작다 */
+.codechit{fill:transparent}
+.codec:hover .codechit{fill:var(--fill)}
+.codec:hover path{stroke:var(--ink-strong)}
+.codec:hover .cocn{fill:var(--navy)}
+.cocn{fill:var(--label);font:700 37px var(--mono);text-anchor:end}
+
+/* 상자 강조 — 챔버와 같은 그룹이라 어느 쪽에 hover 해도 같이 살아난다 */
+.hs:hover .cobox,.hs:focus-visible .cobox,.hs.sel .cobox{stroke:var(--ink);fill-opacity:1}
+.hs:hover .colead,.hs:focus-visible .colead,.hs.sel .colead{stroke:var(--ink)}
+.hs:hover .coanchor,.hs:focus-visible .coanchor,.hs.sel .coanchor{stroke:var(--ink)}
+.hs.warning .cobox{stroke:var(--alarm)}
+.hs.warning .colead,.hs.warning .coanchor{stroke:var(--alarm)}
+.hs.critical .cobox{stroke:var(--pink)}
+.hs.critical .colead,.hs.critical .coanchor{stroke:var(--pink)}
+
+/* ── 이상 챔버 = **말풍선 전체를 솔리드 빨강** (2026-07-30) ────────────────────
+   상태를 이름 배경 한 곳으로만 알리던 것을 상자 전체로 올렸다 — 전경에서 위험 챔버를
+   찾는 시간이 줄어드는 쪽. 판 위 요소는 전부 흰색 계열로 재지정해야 대비가 유지된다.
+   ⚠️ stroke·fill-opacity 는 건드리지 않는다 — hover 강조 규칙(위)과 특이도가 같아
+   나중에 선언한 쪽이 이겨서, 여기서 지정하면 이상 챔버만 hover 가 죽는다. */
+.hs.critical .cobox{fill:var(--pink)}
+.hs.critical .coidbg{fill:transparent}   /* 빨강 위 빨강 판은 안 보인다 — 이름은 흰 글자로 충분 */
+.hs.critical .corule{stroke:rgba(255,255,255,.34)}
+.hs.critical .cocn{fill:#fff}
+.hs.critical .codec path{stroke:#fff}
+.hs.critical .codec:hover .codechit{fill:rgba(255,255,255,.22)}
+.hs.critical .codec:hover path{stroke:#fff}
+.hs.critical .codec:hover .cocn{fill:#fff}
+/* 빨간 판 위에서는 **면이 이미 등급을 말한다** — 색이 아니라 흰 글자로 간다.
+   (분홍 숫자는 빨간 면에 묻히고 앰버는 대비가 안 난다 — 종합 현황 표에서 같은 걸 겪었다) */
+.hs.critical .cocellbg{fill:rgba(255,255,255,.16)}
+.hs.critical .cocellk{fill:rgba(255,255,255,.78)}
+.hs.critical .cocellv{fill:rgba(255,255,255,.45)}
+.hs.critical .cocellv.on,
+.hs.critical .cocellv.on.심각,
+.hs.critical .cocellv.on.주의{fill:#fff}
+.hs.critical .cotag{fill:#fff}
+
+/* ── 추적 모드 — 챔버 외곽선을 클릭으로 따는 개발 도구 (?trace=1) ── */
+.ovhot.tracing{cursor:crosshair}
+.trc polygon{fill:color-mix(in srgb,var(--pink) 14%,transparent);stroke:var(--pink);
+  stroke-width:6;stroke-linejoin:round}
+.trc circle{fill:var(--pink);stroke:var(--card);stroke-width:3}
+.ovtrace{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;
+  border:1px dashed var(--pink);border-radius:10px}
+.ovtrace b{font:700 10.5px var(--mono);letter-spacing:.1em;color:var(--pink-deep)}
+.ovtrace .num{font:600 10.5px var(--mono);color:var(--faint)}
+.ovtrace button{padding:4px 11px;border:1px solid var(--hairline);border-radius:7px;
+  background:var(--card);color:var(--label);font:600 10.5px var(--mono);cursor:pointer}
+.ovtrace button:hover:not(:disabled){border-color:var(--pink);color:var(--pink-deep)}
+.ovtrace button:disabled{opacity:.4;cursor:default}
+.ovtrace code{flex:1;min-width:240px;font:500 10.5px var(--mono);color:var(--navy);
+  overflow-x:auto;white-space:nowrap}
+

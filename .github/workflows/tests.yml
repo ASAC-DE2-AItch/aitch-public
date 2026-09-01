@@ -1,0 +1,69 @@
+# =============================================================================
+# 유닛 테스트 게이트 — 임포트·로직 회귀 차단 (2026-07-21 신설)
+#
+# 배경: 21c74fe(절대→상대 임포트)가 기존 테스트(test_approvals_api)를 깨뜨렸으나
+#   CI에 pytest가 없어 main까지 통과 (리뷰 AI는 임포트 회귀를 못 잡음).
+#   → PR마다 유닛 테스트를 강제해 같은 유형 재발 방지.
+#
+# 범위: 유닛 테스트만 (~1분). 제외 대상은 실 인프라(기동된 프로세스)가 필요한 것뿐:
+#   · test_api_live.py                  (실행 중인 gateway 필요)
+#   · test_*_level2_pg.py               (실 PostgreSQL 필요 — Level 2)
+#   · test_approval_graph_integration.py (승인 그래프 실 왕복 — 이번 확장 범위 밖, 별도 트랙)
+#
+# 2026-07-22 확장 — src/agent_service/tests/ 편입 (C 제안):
+#   이 게이트의 목적이 "임포트·로직 회귀 차단"인데 Agent Service(리포트 3종·Supervisor)
+#   테스트 200여 건이 밖에 있었다. 실제로 같은 유형 회귀 2건을 같은 날 사람 손으로 잡았다:
+#     · Brief.context_score 가 LLM 값으로 나감 (B 게이트 점수를 LLM 이 재작성 — §0 위반)
+#     · LimitOption 에 limit_version 부재 → fdc.correction 변경 금지 필드가 빈 채 발행
+#   둘 다 테스트로 못 박았으므로, 게이트에 넣어야 재발이 PR 에서 걸린다.
+#   추가 의존은 pydantic·httpx 둘뿐이다(agent_service 는 Qdrant·LLM 을 지연 import).
+#   ⚠️ 실 LLM·Qdrant 가 필요한 평가 하네스(eval_supervisor)는 테스트가 아니라 스크립트라
+#      여기 포함되지 않는다 — 유닛만 유지한다.
+#
+# 2026-08-02 확장 — fastapi·langgraph·psycopg2-binary 편입 (#76, C 리뷰 지적):
+#   승인 게이트 유령 성공 가드(TSR-0002)의 회귀 테스트 8건 중 7건이 의존성 부재로 조용히
+#   skip 됐다 — 실측: dev 407 passed/2 skipped → 이 PR 408 passed/9 skipped (passed +1,
+#   skipped +7). 하필 409 를 실제로 내보내는 라우트 배선 3건이 통째로 0회 실행이라,
+#   "예외가 안 나는 것이 증상" 인 그 버그를 CI 가 못 지켰다.
+#     · fastapi         — B절 라우트 테스트(TestClient)
+#     · langgraph       — A절 has_resume_point 의미 검증(MemorySaver 포함)
+#     · psycopg2-binary — main.py 가 predictions_router 를 모듈 최상단에서 import 하므로
+#                         없으면 skip 이 아니라 수집 에러가 된다
+#   비용은 설치 +20~40초. 이 줄을 되돌리면 가드가 조용히 죽는다.
+# =============================================================================
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 의존성 설치 (유닛 테스트 최소분)
+        # sqlalchemy 추가 (2026-08-04, C·PR #109): B5-4 리졸버가 SQLAlchemy 커넥션을 받아
+        #   `app/db.py` 의 sa_engine/sa_connect 가 import 한다. 없으면 조달이 ModuleNotFoundError
+        #   로 죽고 **스텁 폴백이 조용히 성공**해, DB 장애 대응 테스트가 엉뚱한 이유로 통과한다.
+        #   requirements.txt:30 에는 이미 있다 — 이 목록만 뒤처져 있었다.
+        run: pip install pytest pyyaml pandas pydantic httpx fastapi langgraph langgraph-checkpoint psycopg2-binary sqlalchemy
+
+      - name: pytest (유닛 — 인프라 의존 테스트 제외)
+        run: >
+          python -m pytest tests/ src/agent_service/tests/ -q
+          --ignore=tests/test_api_live.py
+          --ignore=tests/test_approval_graph_level2_pg.py
+          --ignore=tests/test_incident_grouper_level2_pg.py
+          --ignore=tests/test_approval_graph_integration.py

@@ -1,0 +1,24 @@
+# =============================================================================
+# AITCH — 줄바꿈(EOL) 정규화 (2026-07-21 팀 합의)
+# 정책: **저장소만 LF**(`* text=auto`) — 워킹트리 EOL 강제(eol=lf) 없음.
+#   · 같은 문제(CRLF 팬텀 diff) 재발 시에만 워킹트리 LF 강제로 전환한다 (합의 조건).
+#   · 배경: CRLF 팬텀 diff 169건(실변경 0) — 점검문서 §B1.
+# =============================================================================
+* text=auto
+
+# 바이너리 — EOL 정규화·diff 대상에서 제외
+*.joblib  binary
+*.pkl     binary
+*.pth     binary
+*.pt      binary
+*.gz      binary
+*.zip     binary
+*.parquet binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.pdf     binary
+*.xlsx    binary
+*.pptx    binary
+*.docx    binary
+*.ubj     binary

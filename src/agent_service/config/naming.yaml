@@ -1,0 +1,67 @@
+# =============================================================================
+# src/agent_service/config/naming.yaml — 리소스 이름/식별자 단일 레지스트리
+# 근거: CLAUDE.md 6-4 네이밍 컨벤션. 조정 권한자: C 팀원 C.
+# 규칙:
+#   · 여기는 "이름/식별자"만. 주소·엔드포인트·비밀값은 .env (여기 금지 — 환경별 상이·민감).
+#   · 값 변경 = config PR + 사유. 키는 snake_case. 미확정 = null + TODO (조용한 기본값 금지).
+#   · 단일 소스가 따로 있는 값은 복제하지 말고 authorities 포인터를 따른다(deploy.yaml 방식).
+# =============================================================================
+
+# --- 이 파일이 복제하지 않는 값들의 단일 소스 (포인터) ------------------------
+authorities:
+  embedding_model:     config/kb_schema.yaml  embedding.model      # BAAI/bge-m3 ✅확정(2026-07-09 벤치)
+  instance_type:       src/agent_service/config/deploy.yaml instance
+  quantization:        src/agent_service/config/deploy.yaml quantization
+  ec2_provisioning:    src/agent_service/infra/llm-ec2-experiment/terraform.tfvars
+  id_prefix_convention: CLAUDE.md 6-4                              # 아래 id_prefixes 는 그 머신리더블 미러
+  addresses_endpoints: .env                                        # QDRANT_URL·OLLAMA_HOST·DATABASE_URL·KAFKA_*
+
+project:
+  prefix: aitch          # 리소스 접두사 (AI + ETCH)
+
+# --- Qdrant 물리 컬렉션명 --------------------------------------------------
+#   규칙: <logical>__<model_slug>__<version>  (vectordb.physical_name · CLAUDE.md 4-2)
+#   모델/청킹 교체 = 새 버전 컬렉션(v2) 세트 신설, 덮어쓰기 금지.
+qdrant:
+  model_slug: bge_m3     # BAAI/bge-m3 → slug (kb_schema embedding.model 미러)
+  version: v1
+  collections:           # 벡터 3컬렉션 (로그는 Postgres 전용 — kb_schema postgres_only)
+    error_manual:      error_manual__bge_m3__v1
+    process_knowledge: process_knowledge__bge_m3__v1
+    historical_case:   historical_case__bge_m3__v1
+
+# --- 업무 ID 발번 접두사 (단일 소스=CLAUDE.md 6-4, 여기는 미러) --------------
+#   포맷: <PREFIX>-<YYYYMMDD>-<CHAMBER>-<SEQ>   (예: INC-20260709-SIM_CH_3-0001)
+id_prefixes:
+  alert:              ALERT
+  incident:           INC
+  limit_correction:   LIM
+  recipe_correction:  RCP     # db/init.sql 사용 (CLAUDE.md 6-4 목록 보강 필요 — PM 확인)
+  maintenance:        MNT
+  supervisor:         SUP
+  qual:               QUAL
+  ct:                 CT
+  case:               CASE
+  manual:             MAN
+
+# --- EC2 / 인프라 리소스 이름 (terraform.tfvars 와 대응) --------------------
+ec2:
+  name_tag:            aitch-agent-llm      # EC2 Name 태그
+  security_group_name: aitch-llm-sg
+  key_pair_name:       null                 # TODO: 본인 AWS 키페어명 (SSH 시). null = SSM only
+
+s3:
+  model_bucket:   aitch-agent-service       # 실제 운영 버킷 (bundles/·results/·hf_cache/ 존재 — 2026-07-10 확인)
+  model_prefix:   models/
+  bundle_prefix:  bundles/                  # make_bundle.sh 업로드 대상 (존재 확인)
+  results_prefix: results/                  # 임베딩/LLM 벤치 결과 (존재 확인)
+  hf_cache_prefix: hf_cache/                # 임베딩 HF 캐시 (bge-m3 스테이징 — user_data L93 복원)
+
+# --- Docker Compose 서비스명 (deploy.yaml architecture.placement 대응) ------
+docker:
+  compose_project: aitch-agent
+  services: [qdrant, agent_app, simulator, dashboard, llm, embedding, reranker]
+
+# --- Ollama / 모델 등록명 (실험 경로) --------------------------------------
+ollama:
+  model_name: null       # TODO: Ollama 등록 모델명 (terraform ollama_model_name 과 대응)

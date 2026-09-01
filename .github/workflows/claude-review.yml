@@ -1,0 +1,82 @@
+name: Claude AI Code Review
+
+# 2026-07-20 전환: 직접 API 호출(x-api-key — 유료 크레딧 필요) → 공식 claude-code-action + OAuth 토큰.
+#   팀 상황 = Claude Max 구독 (API 크레딧 없음) → `claude setup-token`으로 만든
+#   CLAUDE_CODE_OAUTH_TOKEN 시크릿이면 구독 quota로 리뷰가 돈다.
+#   토큰 미등록 시: 실패 대신 스킵 + 경고 (CI 1차 리뷰는 CodeRabbit이 담당 — 헌법 5-3 운용 주석).
+# 사전 준비 (1회, PM):
+#   ① 로컬에서 `claude setup-token` 실행 → 토큰 복사
+#   ② repo Settings > Secrets and variables > Actions > New secret:
+#      Name = CLAUDE_CODE_OAUTH_TOKEN, Value = 토큰
+#   ③ Claude GitHub App 설치 (github.com/apps/claude — 레포 접근 허용)
+# 이력: 2026-07-16 exit 128 수리 (PR SHA fetch·json.dumps) — 구 방식 기록은 git history 참조.
+
+# 이 목록은 **좁은 게 의도**다 — 이 리뷰는 헌법(1장·2-2·3-2·4-3) 조준용 2차 층이고,
+# 1차는 CodeRabbit 이 본다(위 주석). 그래서 런북·회의록 같은 문서 PR 이 안 걸리는 건 정상이다.
+#
+# ⚠️ 다만 **경로를 옮기면 커버리지가 말없이 바뀐다.** 필터에 없는 경로만 바꾼 PR 은 리뷰가
+#    아예 안 돌고, 실패면 빨간불이라도 뜨는데 **미발동은 아무 일도 안 일어나서 "코멘트 없는
+#    PR" 이 "통과한 PR" 과 똑같이 생긴다.**
+#    2026-08-09 실측: 앱 인프라를 `src/agent_service/infra/` → 레포 루트 `infra/` 로 옮겼더니
+#    `src/**` 에서 빠져나가 그 뒤 커밋(GPU 스택 ~1,400줄 포함)이 통째로 미검토로 남았다.
+#    (구 위치일 땐 리뷰가 돌고 있었다 — PR #90 이 근거.) 그래서 `infra/**` 는 **신설이 아니라
+#    원상복구**다. **경로를 옮기거나 새 최상위 디렉토리를 만들면 이 목록을 같이 본다.**
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'db/**'
+      - 'infra/**'             # 2026-08-09 — 구 src/agent_service/infra 의 **원상복구**
+      - 'docker-compose.yml'
+      - 'compose.prod.yml'     # 2026-08-09 — docker-compose.yml 은 있는데 배포판만 빠져 있었다
+      - 'docs/API_Contract_*.md'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    env:
+      OAUTH_SET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+    steps:
+      - name: 토큰 미등록 안내 (스킵)
+        if: env.OAUTH_SET != 'true'
+        run: |
+          echo "::warning ::CLAUDE_CODE_OAUTH_TOKEN 미등록 — Claude 리뷰 스킵 (CodeRabbit+사람 리뷰로 진행)."
+          echo "등록 방법: 로컬 'claude setup-token' → repo secret CLAUDE_CODE_OAUTH_TOKEN (워크플로 헤더 주석 참조)"
+
+      - name: Checkout
+        if: env.OAUTH_SET == 'true'
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Claude Review (Max 구독 OAuth)
+        if: env.OAUTH_SET == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            당신은 AITCH(반도체 Etch 공정 AI 플랫폼) 프로젝트의 시니어 코드 리뷰어입니다.
+            이 PR의 변경분을 리포지토리 루트의 CLAUDE.md(프로젝트 헌법)를 기준으로 리뷰하고,
+            결과를 gh CLI로 PR 코멘트 1건에 게시하세요.
+
+            리뷰 절차:
+            1. gh pr diff로 변경분 확인 (src/, db/, docker-compose.yml, docs/API_Contract_*.md 중심)
+            2. CLAUDE.md 1장 불변 원칙 위반 검사 — 위반은 BLOCKER로 표시
+               (Human-in-the-Loop 승인 우회, C65 누수(1-3), fdc.alert 우회(1-2), Incident당 동시 pending 1건(1-4))
+            3. 스키마/Contract 변경 감지 시 docs 동시 업데이트 여부 (4-3)
+            4. 코드 품질 (6장 — docstring, 매직넘버, 예외 처리, graceful shutdown)
+
+            코멘트 형식 (한국어):
+            ## 🤖 Claude AI 코드 리뷰
+            1. 헌법 위반 사항 (BLOCKER)
+            2. 스키마/Contract 동기화
+            3. 코드 품질 이슈
+            4. 개선 제안 (선택)
+          claude_args: |
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Read,Grep,Glob"

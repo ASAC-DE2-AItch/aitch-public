@@ -1,0 +1,25 @@
+# [DRAFT — 검증 착수 시 .draft 제거 후 정식 편입] 조용(quiet) 경로 검증용 시나리오
+# 목적: 사이클_정의 "정직한 한계 ⑤" 해소 — 조용 판정→스냅샷 리베이스(R5)→즉시 복귀 경로의 첫 실측.
+#   조용 = 개방 후 센서가 제자리(레벨 이동 없음) → Qual 4지표 전부 통과 기대.
+# 실행 가능 시점: B5-2(σ-갭) + A5-3(4지표 취합) + P6-2(S7 화면) 이후 — M3 dry-run에 편입 권장.
+# ⚠ 미확정 2건 (검증 착수 전 확인):
+#   ① ground_truth.type — quiet도 regime_transition인지 별도 type인지 (Scorecard 채점기 대조)
+#   ② correct_action 답안지 어휘 — R4는 requalify(요란)만 추가됨. quiet용 어휘 미정의로 보임
+# 확인 포인트 (통과 기준):
+#   - Qual 5장 → 4지표 통과 → S7 "조용" → 승인(복귀) → qual_snapshots 갱신(R5)
+#   - 가한계 미진입 · A7 제외 = 10장(조용 차등) · QualVerdictConfirmed(verdict=quiet, incident_id=null)
+#   - 후속: 다음 개방의 Qual이 "갱신된 스냅샷"과 비교되는지 — R5 미작동 시 영구 요란 오판 루프
+scenario_id: SC-QUAL-QUIET-CH1
+description: SIM_CH_1 가상 소정비 — 레벨 이동 없음 (조용 판정·스냅샷 리베이스 R5 검증)
+target_chamber: SIM_CH_1
+pattern: pm_reset
+start_after_wafers: 150          # 정상 구간 확보 후 개방 (loud 시나리오와 동일 관례)
+level_shifts_eng: {}             # 이동 없음 — "조용"의 정의
+ignition_shifts_eng: {}
+y_shift: 0
+ground_truth:
+  type: regime_transition        # ⚠ 미확정 ① — quiet 전용 type 여부 확인
+  verdict: quiet
+  correct_action: snapshot_rebase_resume   # ⚠ 미확정 ② — 답안지 어휘 확정 필요
+  correct_disposition: NONE
+  c65_effect: none

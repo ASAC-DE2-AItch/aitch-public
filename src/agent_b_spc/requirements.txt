@@ -1,0 +1,18 @@
+# =============================================================================
+# agent_b_spc (팀원 B — Smart SPC) 런타임 의존성 — B6-2 G1
+# =============================================================================
+# 실제 import 전수(§1-⑥): confluent-kafka · psycopg2-binary · sqlalchemy · pandas ·
+#   numpy · pyyaml · python-dotenv. torch/lightgbm/xgboost/catboost/shap/optuna/faiss/
+#   streamlit/fastapi 는 전이 체인 0건 — 넣지 않는다.
+# pandas 는 seed_control_limits(make_engine import 체인)가 CSV를 읽으며 유입 → 시드·컨슈머
+#   동일 집합이라 이미지 1개가 양쪽을 덮는다.
+# 플로어 = 개발/검증 환경(파이썬 3.11) 버전. C6-2 requirements 스타일 답습.
+# =============================================================================
+
+confluent-kafka>=2.3        # fdc.* 컨슈머/프로듀서
+psycopg2-binary>=2.9        # Postgres (control_limits·spc_violations 등)
+SQLAlchemy>=1.4,<2.1        # make_engine future=True (1.4·2.0 양쪽 동작)
+pandas>=2.0                 # initial_limits·seed CSV 로드
+numpy>=1.24                 # Nelson·TTTM 수치
+PyYAML>=6.0                 # config/params.yaml 로딩 (헌법 6-1)
+python-dotenv>=1.0          # .env 로딩

@@ -1,0 +1,42 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH2-0046",
+  "timestamp": "2026-07-13T10:45:00.000Z",
+  "chamber_id": "SIM_CH_2",
+  "violations": [
+    {
+      "rule_id": "N3",
+      "sensor": "C11",
+      "sensor_name": "DC_Bias",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "6 points continuously increasing",
+      "current_value": -273.0,
+      "limit_version": "v1",
+      "control_limit_upper": -280.0,
+      "control_limit_lower": -340.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 2.0,
+    "top_gap_sensor": "C11",
+    "gap_pct": 3.5,
+    "reference_suspect": false
+  },
+  "context_score": 130,
+  "prediction_context": {
+    "wafer_id": "C64_1045",
+    "predicted_c65": 710.0,
+    "shap_top3": [
+      "C11",
+      "C62",
+      "C17"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C11",
+        "rule": "N3"
+      }
+    ]
+  }
+}

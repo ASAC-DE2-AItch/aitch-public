@@ -1,0 +1,15 @@
+# 시나리오 1 (DoD용): C11(DC Bias) 점진 드리프트 — "기준선 노후" 재현
+# 기대 동작: B의 Nelson N2/N3 위반 → fdc.alert → (W4~) Incident → 실력치 재설정 경로
+scenario_id: SC1-DRIFT-C11
+description: SIM_CH_3의 C11(DC Bias)이 300 wafer에 걸쳐 +2.5σ 점진 상승 — 기준선 노후 시나리오
+target_chamber: SIM_CH_3
+pattern: drift
+sensor: C11
+start_after_wafers: 200      # 챔버 처리 200장 이후 시작 (정상 구간 확보)
+duration_wafers: 300         # 램프 길이
+magnitude_sigma: 2.5         # 최종 이동 폭 = 2.5 × 센서 std (N1은 안 걸리고 추세 룰에 걸리는 크기)
+ground_truth:
+  type: baseline_shift
+  correct_action: limit_reset
+  correct_disposition: RELEASE
+  c65_effect: none

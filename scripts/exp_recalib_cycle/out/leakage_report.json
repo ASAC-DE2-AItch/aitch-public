@@ -1,0 +1,65 @@
+{
+  "generated_at_utc": "2026-08-03 05:40:27",
+  "constitution": "1-3 데이터 누수 완전 차단 / 설계서 §5",
+  "all_ok": true,
+  "checks": {
+    "1_no_target_or_id_features": {
+      "ok": true,
+      "n_features": 85,
+      "banned_exact_hits": [],
+      "target_derived": [],
+      "lot_derived": [],
+      "note": "lean-85 동결 피처셋 구조적 보장 + 실행 전 1회 대조 (설계서 §5)"
+    },
+    "2_wafer_level_boundary": {
+      "ok": true,
+      "duplicate_wafer_rows": 0,
+      "wafers_spanning_multiple_days": 0,
+      "note": "테이블이 wafer 1행이므로 날짜 경계 = wafer 경계 (스텝 행 분할 불가)"
+    },
+    "3_train_cutoff_causal": {
+      "ok": true,
+      "n_assignment_rows": 295,
+      "n_sampled_days": 40,
+      "violations": [],
+      "buffer_days": 1,
+      "note": "run_backtest.build_assignment 산출물을 직접 검증 (자체 재구현 아님)"
+    },
+    "4_pm_log_truncation_and_format": {
+      "ok": true,
+      "n_pm_events": 3,
+      "format_violations": [],
+      "tz_aware": [],
+      "truncation_mismatches": 0,
+      "per_cutoff": [
+        {
+          "cutoff": "2019-05-01",
+          "n_wafers": 28872,
+          "n_pm_full": 3,
+          "n_pm_truncated": 2,
+          "cell_mismatches": 0
+        },
+        {
+          "cutoff": "2019-09-01",
+          "n_wafers": 28872,
+          "n_pm_full": 3,
+          "n_pm_truncated": 3,
+          "cell_mismatches": 0
+        },
+        {
+          "cutoff": "2019-11-30",
+          "n_wafers": 28872,
+          "n_pm_full": 3,
+          "n_pm_truncated": 3,
+          "cell_mismatches": 0
+        }
+      ],
+      "method": "lp._meta_features 를 전체/절단 pm_log 로 각각 호출해 프레임 직접 비교",
+      "simplification": "요란/조용 판정 = 즉시 인지 가정 (설계서 §5·§9 한계)"
+    },
+    "5_explicit_raise_not_assert": {
+      "ok": true,
+      "assert_usages": []
+    }
+  }
+}

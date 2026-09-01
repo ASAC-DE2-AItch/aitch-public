@@ -1,0 +1,64 @@
+# =============================================================================
+# 능동형 제조 AI 플랫폼 v4 — Python 의존성
+# =============================================================================
+# 설치: pip install -r requirements.txt
+# GPU 버전 PyTorch가 필요하면: pip install torch --index-url https://download.pytorch.org/whl/cu121
+# =============================================================================
+
+# --- 데이터 처리 ---
+pandas>=2.0
+numpy>=1.24
+
+# --- Kafka ---
+confluent-kafka>=2.3      # orchestrator 그루퍼(PM) — Linux/Docker 에선 정상
+# agent_service consumer 는 kafka-python(순수 파이썬) — confluent 의 native librdkafka DLL 이
+# Windows 개발환경 WDAC 에 하드 차단됨(TSR: 애플리케이션 제어 정책). 순수 파이썬은 미차단.
+kafka-python>=2.0
+
+# --- 머신러닝 (앙상블 모델) ---
+lightgbm>=4.0
+xgboost>=2.0
+catboost>=1.2
+scikit-learn>=1.3
+torch>=2.1                      # 1D-CNN 앙상블 컴포넌트
+joblib>=1.3                     # .pkl 모델 로딩
+shap>=0.44                      # 예측 해석 (SHAP Top3)
+optuna>=3.5                     # 하이퍼파라미터 튜닝 (학습 시에만 사용)
+
+# --- 데이터베이스 ---
+psycopg2-binary>=2.9
+sqlalchemy>=2.0
+
+# --- API 서버 ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# --- 대시보드 ---
+streamlit>=1.32
+
+# --- RAG / Vector DB (팀원 C, D) ---
+faiss-cpu>=1.7
+langchain>=0.1
+langchain-community>=0.0.20
+sentence-transformers>=2.3
+qdrant-client>=1.10             # Qdrant 클라이언트 — hybrid query_points/RRF fusion API 필요(>=1.10)
+FlagEmbedding>=1.2              # BAAI/bge-m3 hybrid(dense+sparse lexical weights) 임베딩 — kb_schema.yaml mode=hybrid
+
+# --- 문서 추출 / 크롤링 (agent_service RAG KB 구축) ---
+pytesseract>=0.3.10            # 스캔 매뉴얼 OCR (poppler pdftoppm + tesseract 바이너리 필요)
+Pillow>=10.0                    # 페이지 이미지 처리 (OCR·Vision-LLM 크롤러)
+beautifulsoup4>=4.12            # 웹 소스 크롤러 HTML 파싱
+requests>=2.31                  # HTTP (웹 크롤러 · Ollama Vision-LLM 호출)
+
+# --- LLM (팀원 C, D) ---
+openai>=1.10
+
+# --- LangGraph 승인 상태머신 (PM · P4-1) ---
+langgraph>=0.2                       # interrupt()/Command(resume) 상태머신 (헌법 1-1)
+langgraph-checkpoint-postgres>=2.0   # Postgres 체크포인터 (Pending = interrupt 상태 저장)
+psycopg[binary]>=3.1                 # 체크포인터가 psycopg3 요구 (grouper의 psycopg2와 공존)
+
+# --- 유틸리티 ---
+python-dotenv>=1.0
+pydantic>=2.5
+pyyaml>=6.0                     # config/params.yaml 로딩 (헌법 6-1)

@@ -1,0 +1,106 @@
+# AITCH 진입 프록시 — nginx  (React 정적 + /api 프록시)
+#
+# 원본은 PM 이 `feat/infra-nginx-entry` 에서 쓴 `deploy/nginx/default.conf` 다(2026-08-03 결정,
+# 브랜치는 8/6 삭제·복구 SHA `b716ed4`). 판단 근거가 잘 서 있어 그대로 승계하고 **두 곳만 고쳤다**
+# — 아래 ⚠️ 두 항목. 확정 설계 v2 §1 이 "진입 = nginx 하나, SG 팀 IP만" 으로 이 선택을 재확인했다.
+#
+# 원본이 남긴 근거(유지):
+#   - ALB 미채택: 단일 노드라 분산 대상이 없다
+#   - CloudFront 미채택: 시연을 팀이 직접 하므로 공개 배포 대상이 없고, CloudFront URL 자체가
+#     공개 엔드포인트라 "공개 접근 없음" 원칙과 충돌한다
+#   - Caddy 대신 nginx: 자동 TLS 는 도메인 보유가 전제인데 미보유이고, 온프레미스로 옮겨도
+#     Let's Encrypt 는 안 돌아 어차피 사내 CA 경로가 된다 — 지금 nginx 로 정하면 전환이 한 번 준다
+#
+# 접근 통제는 여기가 아니라 보안 그룹(팀 IP)·SSM 포트 포워딩이 담당한다.
+#
+# ⚠️ 이 파일은 **템플릿**이다. nginx 공식 이미지가 기동 시 `envsubst` 로 치환한다
+#    (`/etc/nginx/templates/*.template` → `/etc/nginx/conf.d/*`). 치환 변수는 하나:
+#      GATEWAY_UPSTREAM  기본 `gateway:8000` — 게이트웨이가 아직 호스트 프로세스면
+#                        compose 에서 `host.docker.internal:8000` 으로 덮는다.
+#    원본은 이 값을 하드코딩하고 "나중에 한 줄 교체"라고 적어뒀는데, 교체를 잊으면 프록시가
+#    조용히 엉뚱한 곳을 가리키므로 **환경변수 한 곳**으로 뺐다.
+
+upstream gateway_api {
+    server ${GATEWAY_UPSTREAM};
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    # 버전 노출 차단 — 무료 보안 항목
+    server_tokens off;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 업로드 상한 (Brief·리포트 payload 여유)
+    client_max_body_size 8m;
+
+    gzip on;
+    gzip_types text/css text/javascript application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # --- ① API 프록시 -------------------------------------------------------
+    # ⚠️ **`proxy_pass` 끝의 `/` 가 핵심이다** (원본 대비 수정 1).
+    #    게이트웨이 라우트는 전부 루트다 — `/health`·`/events`·`/approvals/pending`…
+    #    (`src/gateway/main.py`, `/api` 접두 없음). 개발 서버는 vite 프록시가 접두를 떼어
+    #    맞춰준다: `rewrite: (p) => p.replace(/^\/api/, "")` (vite.config.ts:14).
+    #    nginx 에서 `proxy_pass http://gateway_api;` 처럼 **URI 없이** 쓰면 원래 경로가
+    #    그대로 전달돼 `/api/approvals/pending` 이 되고 **전건 404** 다.
+    #    끝에 `/` 를 붙이면 매칭된 `location /api/` 자리가 `/` 로 치환돼 dev 와 같아진다.
+    location /api/ {
+        proxy_pass http://gateway_api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        # LLM 경유 요청은 느리다 — 지연 예산 30초(D4)보다 넉넉히 잡는다.
+        # 짧게 잡으면 정상 응답이 504 로 잘려 "조용한 실패"처럼 보인다.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    120s;
+        proxy_read_timeout    120s;
+    }
+
+    # --- ①-b SSE 피드 -------------------------------------------------------
+    # ⚠️ 원본 대비 수정 2 — `/events` 는 **Server-Sent Events** 라 위 블록 규칙으로는 깨진다.
+    #    ⓐ 버퍼링을 끄지 않으면 nginx 가 응답을 모아뒀다 내보내 화면이 뭉텅이로 갱신되고,
+    #    ⓑ read_timeout 120s 면 조용한 구간에서 스트림이 끊긴다(재연결은 되지만 이벤트 유실).
+    location /api/events {
+        proxy_pass http://gateway_api/events;
+        proxy_http_version 1.1;
+        proxy_set_header Host       $host;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        chunked_transfer_encoding off;
+        proxy_read_timeout 24h;
+    }
+
+    # --- ② React 정적 -------------------------------------------------------
+    # 해시가 붙은 자산은 오래, index.html 은 캐시 금지 (배포 후 옛 화면 고착 방지)
+    location /assets/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-store";
+    }
+
+    # SPA 폴백 — 클라이언트 라우팅(/incidents 등)이 404 가 되지 않게
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 컨테이너 헬스체크용 (프록시 안 탐)
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+        add_header Content-Type text/plain;
+    }
+}

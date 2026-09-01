@@ -1,0 +1,190 @@
+# AITCH 배포용 compose 오버레이
+#
+#   docker compose -f docker-compose.yml -f compose.prod.yml up -d
+#
+# 기존 docker-compose.yml 은 건드리지 않는다. 이 파일은 **덧씌우기**만 한다.
+#   ① 컨테이너 리소스 리밋 — 한 놈이 폭주해도 나머지가 살아남게
+#   ② 로그 로테이션 — 무제한 로그는 디스크를 채우고, 디스크가 차면 EC2 전체가 멈춘다
+#
+# 원본은 PM 이 `feat/infra-nginx-entry` 에 쓴 같은 이름 파일이다(브랜치 8/6 삭제·복구 SHA
+# `b716ed4`). 구조·판단(오버레이 방식·로그 앵커·"측정 없이 사이징하지 않는다")을 그대로
+# 승계하고, 원본이 남긴 **"즉시 조치 10번(`docker stats` RSS 실측) 후 그 수치로 교체한다"**
+# 를 이행했다. 아래 값은 전부 **실측 기반**이다.
+#
+# ── 원본에서 바뀐 것 ────────────────────────────────────────────────────────
+#   · **nginx 서비스를 추가하지 않는다.** 원본은 `frontend/dist` 를 별도 nginx 컨테이너에
+#     붙였는데, 지금은 `frontend` 이미지 자체가 2단 빌드(node → nginx)라 nginx 가 그 안에 있다.
+#     오버레이에서 또 띄우면 같은 역할이 둘이 된다.
+#   · 원본이 "아직 안 들어온 것"으로 적어둔 4건 중 3건이 들어왔다 — gateway+시뮬(한 이미지) ·
+#     b-spc · a-pred. 남은 하나(`prediction-sink` 런타임 pip)는 그대로다.
+#   · `postgres` 는 여전히 여기 있다. 프로덕션은 RDS 이지만 **오버레이로는 서비스를 지울 수
+#     없다** — 그때는 별도 파일이 필요하다(원본 주석 유지).
+#
+# ── 실측 조건 (2026-08-07, 로컬 16GB) ───────────────────────────────────────
+#   전 서비스 11종 기동 + 시뮬 `--delay 0.005 --limit 50000 --loop` 로 부하.
+#   파이프라인이 실제로 흐르는 상태에서 쟀다 — a-pred 가 `fdc.prediction` 을 발행하고
+#   b-spc 가 Nelson 판정 + tttm 적재를 하는 것까지 로그로 확인.
+#
+#     서비스            유휴        부하        부하 CPU     리밋 근거
+#     agent-service     3.63GiB     3.63GiB     ~0%          임베딩 상주(BGE-M3). LLM 은 이미지 밖
+#     kafka             1.12GiB     1.06GiB     17~33%
+#     gateway           78MiB       538MiB      ~35%         ⚠️ 차이 460MiB = 시뮬 자식의 CSV 적재
+#     qdrant            393MiB      434MiB      ~0.4%
+#     kafka-ui          320MiB      320MiB      ~0.1%        데모엔 불필요(프로파일 분리 검토)
+#     a-pred            233MiB      253MiB      **~800%**    ⚠️ 8 vCPU 를 혼자 다 쓴다
+#     spc-consumer      69MiB       90MiB       ~40%
+#     postgres          60MiB       74MiB       ~24%         프로덕션은 RDS
+#     prediction-sink   31MiB       31MiB       ~0.9%
+#     frontend          23MiB       23MiB       ~0%
+#     grouper           17MiB       17MiB       ~2.7%
+#     ─────────────────────────────────────────────────────
+#     합계              ~5.98GiB    ~6.5GiB
+#
+# ⚠️ **이 측정의 한계 — 다시 재야 할 것 둘**
+#   ① 시뮬 delay 를 0.005 로 줬다. PM A1 의 데모 배속(초당 200+ msg)보다 **빠를 수 있다**.
+#      배속 스모크(스텝 4)에서 실제 캐던스로 재고, 특히 a-pred CPU 를 다시 본다.
+#   ② agent-service 는 **LLM 이 이미지 밖**(GPU EC2)이라 여기 안 잡힌다. Brief 생성이 도는
+#      상태의 메모리는 EC2 연결 후 재측정 대상이다.
+# =============================================================================
+
+services:
+  # --- 🔴 DB 를 RDS 로 돌린다 (2026-08-12 인프라의 날 실측) ---------------------
+  #
+  # **증상**: AWS 노드에서 스택을 다 올리고 시나리오를 돌렸는데, 파이프라인은 정상이고
+  # Brief 도 나오는데 **RDS 는 0행**이었다. 데이터가 전부 노드 안 `postgres` 컨테이너로 갔다.
+  #
+  #     .env (부팅이 SSM 에서 채움)   DATABASE_URL = ...rds.amazonaws.com:5432/fdc_platform
+  #     docker inspect fdc-gateway    DATABASE_URL = ...@postgres:5432/fdc_platform   ← 이게 이김
+  #
+  # **원인**: base `docker-compose.yml` 이 서비스 8곳(`environment:`)에 로컬 DSN 을
+  # **하드코딩**해 뒀고, compose 규칙상 `environment:` 가 `env_file` 보다 **우선**이다.
+  # 로컬 개발에선 맞는 값이지만 배포에선 RDS 를 조용히 가린다.
+  #
+  # **왜 조용한가**: 컨테이너 postgres 가 멀쩡히 살아 있어 연결이 성공한다. 예외도 경고도
+  # 없고 화면도 정상이다. 다른 점은 **정본이 어디 있느냐** 하나뿐인데, 그게 설계 §0 원칙 1
+  # (*"정본은 PG 하나 — 승인 이력·감사·관리선"*) 이고 노드를 교체하면 통째로 사라진다.
+  #
+  # **이 오버레이가 이미 알던 것과의 관계**: 아래 원본 주석은 *"postgres 는 여전히 여기 있다.
+  # 프로덕션은 RDS 이지만 오버레이로는 서비스를 지울 수 없다"* 까지 와 있었다. 컨테이너를
+  # 못 지운다는 건 맞다 — 하지만 **DSN 을 덮어쓰면 컨테이너가 떠 있어도 아무도 안 쓴다.**
+  # 지우는 대신 가리키는 곳을 바꾼다.
+  #
+  # `${AGENT_PG_DSN}` 는 `.env` 에서 온다(부팅 스크립트가 SSM 파라미터로 채운 값).
+  # 로컬에서 이 오버레이를 쓸 일이 있으면 `.env` 에 로컬 DSN 을 넣으면 그대로 동작한다.
+  #
+  # ⚠️ 각 서비스의 `environment:` 는 **아래 리소스 리밋 블록 안에** 넣는다. 여기서 같은
+  #   서비스 키를 또 열면 `mapping key "..." already defined` 로 compose 가 파싱을 거부한다
+  #   (YAML 은 같은 레벨 중복 키를 허용하지 않는다 — 2026-08-12 실측).
+  #
+  # ct0-bias-updater 는 원본 오버레이에 블록이 없어 맨 아래에 새로 둔다.
+
+  # --- 리소스 리밋 + 로그 로테이션 --------------------------------------------
+  # mem_limit 은 **상한**이지 예약이 아니다. 전부 동시에 peak 를 치지는 않으므로 합계가
+  # 물리 메모리를 넘어도 된다 — 다만 넘긴 만큼 OOM kill 위험이 커진다.
+
+  kafka:
+    mem_limit: 2g                 # 실측 1.06~1.12GiB. 원본 3g 는 과대
+    cpus: 2.0
+    logging: &json_log
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  kafka-init:
+    logging: *json_log
+
+  postgres:
+    mem_limit: 1g                 # 실측 74MiB. 프로덕션은 RDS 로 빠진다
+    cpus: 1.0
+    logging: *json_log
+
+  kafka-ui:
+    mem_limit: 512m               # 실측 320MiB
+    cpus: 0.25
+    logging: *json_log
+
+  qdrant:
+    mem_limit: 1g                 # 실측 434MiB. 원본 2g 에서 조임
+    cpus: 0.5
+    logging: *json_log
+
+  prediction-sink:
+    environment:
+      DATABASE_URL: ${AGENT_PG_DSN}    # RDS (위 머리말)
+    mem_limit: 512m               # 실측 31MiB. 원본 3g 는 과대(런타임 pip 구간 대비였던 듯)
+    cpus: 0.5
+    logging: *json_log
+
+  agent-service:
+    # 🔴 **실측 3.63GiB — 원본 4g 는 여유가 10% 뿐이라 위험하다.** 임베딩(BGE-M3)이 상주하고
+    #    LLM 왕복이 붙으면 더 뛴다. 5g 로 올린다. 낮게 잡으면 우리 컨테이너만 OOM 으로 죽고
+    #    나머지는 멀쩡해서 "왜 Brief 만 안 나오지" 로 보인다.
+    environment:
+      AGENT_PG_DSN: ${AGENT_PG_DSN}    # RDS (위 머리말)
+      DATABASE_URL: ${AGENT_PG_DSN}
+    mem_limit: 5g
+    cpus: 2.0
+    logging: *json_log
+
+  spc-seed:
+    environment:
+      DATABASE_URL: ${AGENT_PG_DSN}    # RDS — 관리선 시딩이 정본으로 가야 한다
+    mem_limit: 1g                 # 시딩이 CSV 를 읽는다
+    cpus: 1.0
+    logging: *json_log
+
+  spc-consumer:
+    environment:
+      DATABASE_URL: ${AGENT_PG_DSN}    # RDS
+    mem_limit: 1g                 # 실측 90MiB. Nelson·TTTM 버퍼 여유
+    cpus: 2.0
+    logging: *json_log
+
+  grouper:
+    environment:
+      DATABASE_URL: ${AGENT_PG_DSN}    # RDS
+    mem_limit: 512m               # 실측 17MiB — 가장 작다(stdlib 만 굽는 이미지)
+    cpus: 1.0
+    logging: *json_log
+
+  a-pred:
+    # ⚠️ 메모리는 253MiB 로 작지만 **CPU 를 800% 쓴다**(8 vCPU 를 혼자 다 씀).
+    #    리밋을 안 걸면 배속 구간에서 b-spc·시뮬·gateway 가 굶는다. 4.0 은 **출발값**이고,
+    #    배속 스모크에서 실제 캐던스로 재측정한 뒤 조정한다(위 한계 ①).
+    mem_limit: 1g
+    cpus: 4.0
+    logging: *json_log
+
+  gateway:
+    environment:
+      DATABASE_URL: ${AGENT_PG_DSN}    # RDS — S4·S6·S7 이 쓰는 DB 라우트가 여기로 간다
+      # 🔴 "로컬은 없는 셈 친다" 스위치 (2026-08-13 신설). 켜지면 DB·LLM 이 로컬로
+      #    해석될 때 인프라 패널에 **경고 행**이 뜨고 ERROR 로그가 남는다.
+      #    계기: 회차 초기화가 RDS 가 아니라 **이름이 같은 빈 로컬 DB** 에 붙어
+      #    빈 테이블을 성공적으로 비우고 `exit 0` 을 냈다 — 붙는 데 진짜로 성공하니
+      #    예외도 에러도 없었고, 사람이 눈으로 발견할 때까지 아무 일도 안 일어났다.
+      #    이 오버레이(=AWS 배포)에서만 켠다. 로컬 개발 화면에는 경고가 안 뜬다.
+      AITCH_REMOTE_ONLY: "1"
+    # ⚠️ **시뮬 자식 포함 산정**(설계 v2 §7 B3). gateway 단독 78MiB · 시뮬 기동 시 538MiB —
+    #    차이 460MiB 가 리플레이 CSV 적재분이다. 데이터셋이 커지면 이 값이 같이 커진다.
+    mem_limit: 1536m
+    cpus: 2.0
+    logging: *json_log
+
+  frontend:
+    # ⚠️ **배포판은 80 으로 직결한다** (#130 PM 리뷰 2026-08-07). base 는 `8081:80` 인데
+    #   그건 로컬에서 kafka-ui(8080)와 겹치지 않으려는 회피값이다. 오버레이가 덮지 않으면
+    #   EC2 에서도 8081 로 떠서 **SG 규칙·런북 URL 이 설계와 어긋난다**
+    #   (설계 v2 §1 "진입 = nginx 하나, SG 팀 IP만").
+    ports:
+      - "80:80"
+    mem_limit: 256m               # 실측 23MiB (nginx alpine + 정적 파일)
+    cpus: 0.25
+    logging: *json_log
+
+  # profiles: ["ct0"] 라 기본 미기동이지만, 켜는 날 같은 함정에 빠지지 않도록 함께 덮는다.
+  ct0-bias-updater:
+    environment:
+      DATABASE_URL: ${AGENT_PG_DSN}    # RDS
+    logging: *json_log

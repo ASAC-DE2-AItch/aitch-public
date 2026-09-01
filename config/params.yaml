@@ -1,0 +1,752 @@
+# =============================================================================
+# config/params.yaml — 파라미터 단일 소스 (헌법 6-1: 하드코딩·매직 넘버 금지)
+# 근거 문서: docs/config_파라미터_합의안_v1.md (v1.7, 2026-07-07 생성)
+# 규칙:
+#   · 값 변경 = config PR + 사유 필수 (조정 권한자: A절=B팀원 B / B절=B(Incident는 PM) /
+#     C절=A팀원 A / D절=C팀원 C / E절=PM윤준호)
+#   · 미확정 값은 null + TODO 주석 — 코드는 null이면 명시적 에러를 내야 함 (조용한 기본값 금지)
+#   · 키는 snake_case (헌법 6-4)
+# =============================================================================
+
+# --- A. 실력치 엔진 (B 팀원 B) ------------------------------------------------
+limit_engine:
+  control_limit_k_sigma: 3.0            # A1 [멘토확정] 평균 ± 3σ
+  reset_delta_max_sigma: 0.5            # A2 1회 재설정 폭 상한 (σ 단위, B4-4ⓐ %→σ). 실제 상한 = max(0.5σ, 분해능)
+                                        #    σ = 현행 활성 관리선 σ. 정기 자동 적용 한계 겸함. (구 5%)
+  reset_cum_max_sigma_per_cycle: 1.0    # A3 PM 사이클 내 누적 상한 (σ 단위). σ = 사이클 시작값 고정. (구 10%)
+  reset_cum_from_initial_warn_sigma: 2.0  # A-warn (2026-07-31) — v1 initial 대비 누적 표류 경고 임계(σ). **비차단**(S4 승인 화면 표시만). A3는 reset_ref 기준이라 승인/incident마다 리셋 → v1 고정 기준 안전망(실측: 11회 승인 3.7σ 미검출). 표시층(승인워크플로/S4)이 correction_history.cum_from_initial과 비교. 잠정 2.0
+  # 분해능 = 그룹 정상표본 고유값의 최소 인접 간격 (계산·집행은 B4-3).
+  # KEEP* 분위수 그룹(σ 없음): robust σ = (ucl − lcl)/6 [±3σ 등가 밴드 역산] 대입 후 동일 0.5/1.0 배수 + 분해능 하한.
+  #   상·하한 비대칭 크면 side별 분리는 B4-3 재량.
+  recalc_method: rolling_mean_3sigma    # A4 [멘토확정] EWMA 폐기
+  rolling_window_n: 500                 # A4 값 유지 확정 (B4-4, 2026-07-11) — 500÷231wpd≈2.2일치 "최근 구간" 의도 유지 (구 "3일치"는 처리율 170 과소집계, 2026-07-10 정정; E2 확정 후 재점검)
+  shadow_eval_wafers: 30                # A5 소급 채점 창 — drift 재설정·상한 초과 승인 전환만 (Phase 2 신규 수립 제외·대기 없음, 11차 개정 2026-07-22)
+  shadow_pass_missed_detection_max: 0   # A6
+  shadow_pass_false_alarm_reduction_min_pct: 35.0  # A6 (M5 지표 동일)
+  seasoning_exclude_wafers: 10          # A7 PM 후 첫 N wafer 재산정 표본 제외 (조용 판정)
+  seasoning_exclude_wafers_loud: 1000   # A7 v2 요란 판정 seasoning = Phase 1 광폭 기간 (합의안 A7 v2 PM확정, B6-3). 조용용 10과 별도 키(기존 스칼라 소비처 initial_limits 보호)
+  provisional_k: 5                      # B6-3 Phase 1 가한계 광폭 배수 (center ± provisional_k·σ_ref). 유효 시작값 — 1차 검증 완료(2026-07-22 sim: 좁은 C17 요란 -18σ 폭주 100→4 억제·재중심 밴드라 좁은센서 무관). ⚠️미탐 상한(최종값)은 W7 Scorecard 확정(C8 선례 값교체). 합의안 등재 = PM 후속
+  min_establishment_wafers: 500         # B6-3-b Phase 2 재수립 최소 정착 표본(하한 가드=대기 메커니즘, Review1). 잠정 rolling_window_n와 동일 — Kafka 누락 여유는 floor 검토(값 튜닝)
+  snapshot_min_n: 30                    # B6-3-b 리베이스(R5) 그룹별 최소 유효 표본 — 붕괴 그룹 skip(ZeroDiv/KeyError 가드, Review3). B5-2 스냅샷 관행 30
+  verify_forward_false_alarm_max_pct: 5.0  # B6-3-b verifying(V) 절대 오탐율 상한 — 새 firm 관리선 forward 채점(감소율 아님, 비교대상 없음). 잠정 5% — Scorecard 튜닝
+  init_sample_rule: settled_after_reset # A8 리셋 이후 + C42=0 정착 구간 (B3-1 산출)
+  recalc_interval_wafers: 500           # A9 정기 리캘리 발동 주기(텀블링) — rolling_window_n(표본 폭)과 별개 키. 코어 미사용·B5-1 호출 주기용 (B4-3)
+  recalc_deadband_k_se: 2               # A10 dead band = k×SE(재산정 표본오차) — 이동량이 이내면 재설정 생략(무의미 이력·버전 증식 방지) (B4-3). B6-3-e: ProvisionalConfig가 deadband_k_se 속성으로 재사용(정착 판정 밴드 계수)
+  resolution_deadband_k: 3.0            # 분해능 dead-band (2026-08-06 PM 승인) — 관리선 최소 반폭 = k×계측분해능. resolution을 "최소 σ"로 보고 k_sigma(3)와 동일 계수 적용(±3σ 체계 정합·gage R&R). wafer-mean resolution이 원 센서보다 잘게 쪼개져(평균 효과) k=1은 부족 → k=3에서 원 센서 분해능 급 방어. 이산 센서 오탐(C57-s4류) 방어. σ·분위수 밴드 둘 다 floor. 0=비활성
+  # --- B6-3-e Phase 1 정착 판정 데이터기반화 (2026-07-26 · σ 수렴 판정. ⚠️신규·실측대기 W7) ---
+  settle_window_wafers: 200             # W — 비중첩 블록 길이(그리드 {175,200,250}). PM 추천
+  settle_consecutive_m: 2               # M — Δ<band 연속 충족 횟수(정착 확정). PM 추천
+  settle_min_wafers: 600                # 정착 유효 하한 = max(이 값, (M+1)×W). 조기 종료 방어
+  settle_block_min_fill: 0.5            # 블록 평가 최소 유효표본 비율(n≥W×이 값). TTTM tttm_window_min_fill 선례
+
+# --- B. SPC / TTTM / Incident (B — Incident 항목은 PM) -------------------------
+spc:
+  tttm_warning: 2.0                     # B1
+  tttm_critical: 3.0                    # B1
+  tttm_reference: fleet_median          # B2 [멘토확정] + 자기 Qual 스냅샷 절대 비교
+  reverse_rule_min_chambers: 3          # B3 동시 이탈 ≥ 3/4 과반 (챔버 6→4 축소, 멘토 2026-07-19). 구 4/6→4챔버선 4=만장일치라 3/4로 과반 재정의 (오탐↑→4, 미탐↑→2 튜닝)
+  tttm_window_wafers: 20                # B4-2 챔버별 rolling median window 길이 (Incident 병합창 20 정합)
+  tttm_window_min_fill: 10              # B4-2 fleet median·판정 warmup 최소 충전 (⌈W/2⌉). 미충전 챔버는 판정 유예
+  drift_score_threshold: 0.7            # B4 초기값 — ROC 재산출 예정. (C6 AE와 별개 신호)
+  context_score_agent_min: 31           # B7 미만은 기록만 (LLM 미가동)
+  auto_inhibit_severity: critical       # B8 N1, TTTM > 3.0
+  crazy_wafer:                          # B9 [데이터확정] 1장 spot → 자동 HOLD → 승인 스크랩
+    predicted_c65_threshold: 1540       #    train P99 (오발동 실측 후 P99.9=상향 재검토)  ※ 시연 구성(1572→1540)
+    anomaly_score_multiplier: 3.0       #    OR 조건 유지 (미탐 비용 > 오탐 비용)
+    use_anomaly_arm: false              #    **2026-08-11 한정 false — AE 포화 격리** (PM 승인)
+                                        #    구 동작 = true(무조건 발동). 컷 = multiplier × ct.ae_anomaly_threshold
+                                        #      = 3.0 × 0.2 = 0.6 인데, 라이브 anomaly_score 가 **98.2% 가 정확히 1.0**
+                                        #      이라 상시 초과 → wafer 의 40~57% 가 crazy 판정(실측 2026-08-11).
+                                        #      그 알람은 대표 위반이 없어 하류에서 tuning=None → insufficient_evidence
+                                        #      로 종결된다 — 신호는 없고 기록만 쌓인다.
+                                        #    ⚠️ **컷 조정은 대안이 아니다** — 포화가 정확히 1.0 이라 1.0 미만 컷은
+                                        #      전부 발동하고 1.0 초과는 영구 미발동(= 잠금과 동일). 그래서 스위치다.
+                                        #    Qual `use_ae_axis: false`(PM 8/6)·RTD `exclude_ae_arm: true` 와 같은
+                                        #      논리의 세 번째 적용. **AE 포화 해소 확인 시 true 로 되돌린다.**
+                                        #    predicted arm(`> P99`)은 불변 — 이 스위치와 무관하게 계속 판정한다.
+  # --- B 신규 등재 (2026-07-10 PM 승인 — 코드 상수 → config 이관, 헌법 6-1. 출처: B 목록) ---
+  trim_quantile: 0.01                   # 그룹 내 극단치 트림 비율 (양쪽 각 1% — σ 부풀림 방지, initial_limits)
+  min_trim_n: 100                       # 트림 적용 최소 표본 수 (이하면 원본 그대로)
+  q_low: 0.00135                        # 조합② 분위수 하한 (±3σ 등가 0.135% — KEEP* 분위수 관리선, B 등재 2026-07-12)
+  q_high: 0.99865                       # 조합② 분위수 상한 (±3σ 등가 99.865%)
+  min_group_n: 30                       # 재산정 소표본 가드 (B4-3 recompute_group — n_used<이하면 no_change). 초기 baseline 게이트는 min_trim_n
+  false_alarm_warn_pct: 2.0             # 자기표본 재적용 오탐율 경고 기준(%) — initial_limits·monitoring_whitelist 공용 (단일 등재)
+  cv_warn: 0.5                          # 변동계수(σ/|center|) 경고 기준 (넓은 한계 감지)
+  activity_min: 0.05                    # 준-꺼짐 판정 — 센서 최대 range 대비 활성도 임계
+  mag_min: 0.10                         # 준-꺼짐 판정 — 센서 최대 |center| 대비 크기 임계
+  pm_log_pending_cap: 5                 # [잠정] B7-1 D4 — pm_log 기입 실패 누적 관리선. 초과 시
+                                        #   ERROR 1회(래치). **drop 아님**(유실 유발 — §4-1). 정상이면
+                                        #   0 근처라 도달 자체가 파일쓰기 지속 실패 신호. 최종값은 24h 실측 후(§5).
+                                        #   ※ 합의안 doc sync PM 대기(4-3, non-blocking, D0-2 §2 절차)
+  # --- B5-4 Recipe Tuning 엔진 (2026-07-30 · 스펙 §3-4 v2.2. ※ 합의안 doc sync PM 대기 4-3) ---
+  #   게인 식별 불가로 스코프 축소(D11): C4 축 "방향만" + 고정 정책 스텝. 감도 아티팩트 폐기(D5).
+  #   기존 재사용: agent.recipe_delta_max_pct(D6=3.0 — 명목 대비 누적 예산, 소유 C·B는 읽기만).
+  recipe_step_pct: 1.0                  # D12 1스텝 이동 %(정책값·게인 아님). D6 예산 3% ÷ ≈3스텝 반복
+  recipe_knob_map_path: config/recipe_knob_map.yaml  # 손잡이 맵 경로(하드코딩 금지 6-1)
+  time_gap_threshold_hours: 72          # Nelson 버퍼 리셋 시간공백 임계(h — >관측 최대 양성공백)
+  wafer_idle_flush_sec: 30              # D0-2 웨이퍼 완성 tail 트리거 — 마지막 raw 후 이 시간 무입력이면 flush.
+                                        #   [잠정] 종료 마커가 없어 다음 웨이퍼 시작(경계 감지)이 1차 신호이고,
+                                        #   이건 마지막 웨이퍼·유휴 구간용 안전망. 확정값은 dry-run 웨이퍼 간격 실측 후.
+                                        #   ※ PM 합의안 문서 등재 요청 예정 (헌법 4-3, non-blocking)
+                                        #   🔗 **A `lean85.idle_flush_sec`(15)와 짝인 값** (2026-08-10 A 회신).
+                                        #     a-pred 가 B 보다 **먼저** flush 해야 B 알람 시점에 예측이 캐시에 있다.
+                                        #     지켜야 할 부등식은 15<30 이 아니라 **유효치** 기준이다:
+                                        #       lean85.idle_flush_sec + IDLE_CHECK_INTERVAL_SEC(5.0) < 이 값
+                                        #       15 + 5 = 20 < 30  (여유 10s)
+                                        #     이 값을 내리거나 A 값을 올릴 때는 **두 값을 같이** 봐야 한다 —
+                                        #     어긋나면 예외가 아니라 **조인율 0%**(양쪽 정상 로그·산출물만 빔)로 나온다.
+                                        #     기동 시 consumer._check_idle_flush_ordering() 이 두 값을 읽어 대조한다.
+  context_score_pred_weight: null       # B7 후속 [TODO — B4-1 착수 시 B 확정] predicted_c65 심각도 가중치.
+                                        #   단독 알람 불가·센서 알람에만 가산 + 가한계 Phase 0~1 구간 가중 0 (2026-07-10 확정).
+                                        #   ※ B 제안의 별도 context_score: 섹션 대신 spc 내 등재 — context_score_agent_min(B7)과 나란히 (섹션 통일)
+  # --- B4-1 Context Score 배점 가안 v0 (설계 §4 → B 확정, 2026-07-24 · flat 등재 spec §8). ※ 합의안 doc sync PM 대기(4-3, non-blocking) ---
+  #   σ 유도 k_sigma·밴드 임계(tttm_warning 2.0·tttm_critical 3.0)는 신규 키 없이 기존 키 재사용.
+  # --- G8 선택지 A 채택 (2026-08-11) — 구 {N1:10, N2:12, N3:15, N4~N8:12} · σ가산 5 · damping 0.0 ---
+  #   근거 = `analysis/step6/results/G8_배점임계_후보_v1.md` (5차원 전수 탐색, AE=0 전제).
+  #   **게이트(31)를 안 건드리는 조합 중 최선** — 게이트를 바꾸면 C fixture·계약까지 번진다.
+  #   시나리오별 실측(라벨 5종 · 주입 wafer 게이트 통과율 / 첫 탐지):
+  #     구 배점  SC1 0% +12장 · SC2 0% +91장 · SC3  6% +8장 · SC4 16% +4장 · SC5  0% +511장
+  #     선택 A   SC1 1% +12장 · SC2 0% +16장 · SC3 61% +2장 · SC4 93% +2장 · SC5 12% +2장
+  #   헛호출은 1.4 → 3.0건/일 = **재설계 신호선(100건/일)의 3.0%**, G8 자체 예산 30건/일 이내.
+  #   ※ 2026-08-11 정정 — 초판 주석의 "신호선 30건/일"은 오기다. 신호선은 **100건/일**이고
+  #     30건/일은 G8 이 스스로 건 예산이다(G8 문서 §허용치). 3/30=1/10 로 산술이 맞아떨어져
+  #     눈에 안 띄는 종류였다. 값(아래 3키)에는 영향 없음 — 비교 대상 표기만 틀렸다.
+  context_score_rule_base: {N1: 20, N2: 8, N3: 8, N4: 8, N5: 8, N6: 8, N7: 8, N8: 8}  # e1 룰 기본점(축 내 max·합산금지). N1=유일한 '실제 관리선 이탈' 룰이라 최고점(T3·T18)
+  context_score_size_per_sigma: 2        # e3 위반 크기 — 초과 1σ당 가산. 5→2 (크기보다 룰 종류·수렴이 신호)
+  context_score_stream_damping: 0.2      # SPC 축 **스트림 간** 결합 감쇠 — `s₁ + Σ(나머지)×d`.
+                                        #   0.0 = 현행 max 동치. **0.2 = T14 권장** — max 는 수렴 증거를 버려
+                                        #   다센서 사건(발화 스트림 평균 7.96개)에서 첫 통과가 62장 지연됐다.
+                                        #   ⚠️ 스트림 **내부** e1 max(합산 금지)는 별개다 — 이중계상 방지라 불변.
+  context_score_persistence_bonus: 10    # e2 지속성 — v0 미사용(선등재 키, 무상태 판정불가·Step6 엔진 episode 후)  [가안 — Step6 Scorecard 확정]
+  context_score_tttm_warning_pts: 0     # e4 TTTM warning 밴드 가점  [가안 — Step6 Scorecard 확정]  # 8/5 한정 0 — C62 자 왜곡 격리(B 합의 8/4·재분류 후 재계산 복원)
+  context_score_tttm_critical_pts: 0    # e4 TTTM critical 밴드 가점  [가안 — Step6 Scorecard 확정]  # 8/5 한정 0 — C62 자 왜곡 격리(B 합의 8/4·재분류 후 재계산 복원)
+  context_score_reference_suspect_penalty: 0  # e5 reference_suspect 감점(net = e4 − e5)  [가안 — Step6 Scorecard 확정]  # 8/5 한정 0 — C62 자 왜곡 격리(B 합의 8/4·재분류 후 재계산 복원)
+  context_score_transient_discount: 0.5  # m1 과도(C42) 할인 — combine(공동) 소비  [가안 — Step6 Scorecard 확정]
+  context_score_clip_min: 0              # 최종 점수 하한 — orchestrator(context_score.py) clip. 0·100 하드코딩 금지(6-1)
+  context_score_clip_max: 100            # 최종 점수 상한 — alert.py context_score(int 0~100)와 정합. B0(combine 선행)
+  prediction_cache_purge_interval_sec: 60 # B4-1 Step3b — 예측 캐시 purge_expired 호출 주기(consumer 캐던스=B절, wafer_idle_flush_sec 옆). 잠정 60s(TTL 900의 1/15)·실측 튜닝(b2·b3). ※ 합의안 doc sync PM 대기(4-3)
+  prediction_join_grace_ms: 800           # 예측 조인 유예 상한(ms). **0 = 비활성(현행 동작)** — 킬 스위치.
+                                        #   왜: B 와 A 가 같은 트리거("같은 챔버 다음 wafer 도착")로 출발하는데
+                                        #     A 만 모델 추론 왕복이 더 붙어 **중앙값 57ms** 늦다(실측 2026-08-11:
+                                        #     p50 57ms · p90 127ms · max 633ms). B 조회가 먼저 끝나 압축 리플레이에서
+                                        #     조인이 **99.4% 빗나간다**. `lean85.idle_flush_sec`(A)는 무입력 경로만
+                                        #     덮으므로 시연 속도(같은 챔버 간격 약 0.6s)에서는 발동하지 않는다.
+                                        #   ⚠️ **상한이지 고정 지연이 아니다** — 예측 도착 즉시 발행하므로 체감 +57ms.
+                                        #     800 이 실측 max(633ms)를 덮는 후보값이나, **켜기 전 결정 필요**:
+                                        #     조인이 살아나면 B9 crazy(anomaly arm)가 실측 비율(40~57%)로 깨어난다.
+                                        #   상세 = src/agent_b_spc/specs/예측조인유예_스펙플랜.md
+  prediction_join_pending_max: 500      # 유예 큐 상한(wafer). 초과 시 유예 없이 즉시 발행(메모리 가드)
+  # --- B4-1 Step4 예측 축 (score_pred, A 팀원 A) 신규 등재 2026-07-25 ---
+  #   e8 P95 방향 가중항. p95_threshold는 config 아님 — y_thresholds(버전 고정) 런타임 조회·주입(기획서 §3.2).
+  context_score_pred_p95_scale: null     # [TODO] gap 정규화 스케일(예측 C65 단위). pred_weight set 시 필수(null이면 명시적 에러)
+  context_score_pred_w_cap: null         # [TODO] 방향 가중 상한(포화). pred_weight set 시 필수
+  context_score_pred_gated_phases: [phase_0, phase_1]  # 가중 0 처리 Phase value(provisional get_phase)
+  # --- B4-1 Step4 AE 축 (score_ae, A) 신규 등재 2026-07-28 ---
+  #   D1 확정(변경점검 v2): anomaly 입력 = fdc.prediction.anomaly_score = **ae_score**(ECDF 캘리 [0,1]).
+  #   z 표준화 경로는 미채택 — ae_raw 왜도 3.43 비대칭이라 z=2/3 경계의 VAL 실측 오탐이 3.98%/1.94%
+  #   (정규 가정 2.28%/0.13% 대비 최대 15배). 헌법 1-1 예외2(비정규 → 분위수 관리선) 전례와 동일 판단.
+  #   ※ 두 채널(anomaly·drift)은 단일 ae_raw 파생 → 그룹 내 **max 집계**(합산 금지, 그룹핑 A3).
+  #      실측 이중계상: 합산 시 평균 28.65점 vs max 16.70점(+72% 과대).
+  context_score_ae_band_edges: [0.2, 0.5, 1.0]   # e6 anomaly 밴드 경계(오름차순·`>=` 포함). calib 앵커와 동일 눈금
+                                        #   — VAL 실측 오탐 1.53% / 0.51% / 0.10% (설계 1.5/0.5/0.1% 정합).
+                                        #   ※ 경계 변경은 calib 앵커와 한 몸 — Scorecard 근거 + 설계서 동기 필수(4-3)
+  context_score_ae_band_pts: [0, 0, 0]           # e6 밴드별 가점. edges와 길이 동일 필수(불일치 시 명시적 에러).
+                                        #   **2026-08-11 한정 0 — AE 포화 격리**(구 [10, 20, 30]).
+                                        #   실측: 라이브 `anomaly_score` 가 **98.2% 가 정확히 1.0**(전 구간 8,247장).
+                                        #   서빙 번들이 리셋 前 구간 학습인데 시뮬은 `replay_post_reset_only: true` 로
+                                        #   리셋 後만 발행해 학습·발행 구간이 어긋나 있다. 그 상태로 배점을 주면
+                                        #   **모든 알람에 최상단 밴드 30점이 상시 가산**돼 게이트가 사실상 사라진다
+                                        #   (실측: 주입 챔버 74.6% vs 비주입 72.6% — 구별 0 · 헛호출 167.8건/일).
+                                        #   Qual `use_ae_axis: false`(PM 8/6)·RTD `exclude_ae_arm: true` 와 같은 논리의
+                                        #   세 번째 적용이며, **포화 해소 확인 시 되돌린다**(가드: e4·e5 격리 선례).
+                                        #   근거 = `analysis/step6/results/G8_배점임계_후보_v1.md` · 공유 노트 2026-08-11
+                                        #   [TODO] Scorecard 확정(기준=미탐 0 하 호출 최소화, 그룹핑 §5)
+  context_score_ae_drift_lo: 0.3         # e7 drift 하단 밴드 경계(초과 시 발화, `>`)  [TODO] 실측 튜닝
+  context_score_ae_drift_hi: 0.7         # e7 drift 상단 밴드 경계. 유효 밴드폭 0.07(B0 0.13~ALARM 0.20)이라 포화 쉬움
+  context_score_ae_pts_drift_lo: 0       # e7 lo 밴드 가점. **2026-08-11 한정 0 — AE 포화 격리**(구 10)
+  context_score_ae_pts_drift_hi: 0       # e7 hi 밴드 가점. **2026-08-11 한정 0 — AE 포화 격리**(구 20)
+                                        #   e7 은 `clip((EWMA(ae) − B0)/(0.2 − B0), 0, 1)` 이라 e6 포화의 **종속**이다 —
+                                        #   anomaly 가 1.0 이면 EWMA 가 몇 장 만에 alarm(0.2)을 넘어 drift 도 상시 1.0
+                                        #   (실측 98.7%). e6 만 끄고 e7 을 남기면 같은 신호가 다른 이름으로 들어온다.
+  context_score_ae_aggregate: max        # A3 그룹 내 집계 — max 고정(v0). 대안 complementary/soft_or는 실데이터 채점 후
+  # --- B4-1 Step4공통·Step5 신규 등재 2026-07-28 (통합구현계획서 v2 §7) ---
+  context_score_contribution_log_path: logs/contribution_log.jsonl
+                                        # M1-3 계측 덤프(축 단위 JSONL append). Step 6 상관분석 입력 자산.
+                                        #   축별 기여(s_spc·s_tttm·s_ae·s_pred)+raw/final을 wafer 1건=1행으로 남긴다.
+                                        #   경로는 리포 루트 기준 상대경로 — 디렉토리는 계측 훅이 생성(D-6).
+  publish_enabled: true                  # Step5 발행 스위치(D-11). [컷오버 2026-07-30 PM] false=Kafka send만 skip —
+                                        #   AlertModel 조립·spc_violations 적재는 정상 수행(dry-run).
+                                        #   ※ Phase 0 억제(D-8)와 직교: 억제=적재·발행 둘 다 skip / 스위치=발행만 skip.
+                                        #   [컷오버] mock_alert_publisher 가동 중 true 금지(이중 발행) — PM 합의 후 전환(E2)
+  y_threshold_cache_ttl_sec: 600         # Step5b YThresholdCache TTL backstop(초). publisher._Y_CACHE_TTL_SEC 하드코딩 승격.
+                                        #   단일 consumer라 분산 stale 없음 — out-of-consumer 재수립(정기 recalc·재Qual)·재시작 대비.
+
+prediction_cache:                       # B4-1 Step2 예측 캐시 (A 팀원 A) — 신규 등재 2026-07-24
+  ttl_seconds: 900                      # 항목 유효기간(초). null=만료 없음. 잠정 15분 —
+                                        #   wafer 완료~조인 지연 여유. 실측 캐던스로 튜닝(non-blocking).
+  max_entries: 5000                     # 보관 항목 상한. null=무제한. 초과 시 최오래 ts부터 제거(용량 가드).
+
+# pm_log — A 예측(lean-85) 메타 피처·이벤트 재학습의 입력 파일 (B6-3-f, 2026-07-28)
+#   작성자 = B 1곳(spc_consumer, 요란 판정 확정 시 append) · A는 읽기 전용 (계약 §8-B)
+pm_log:
+  path: pm_log.json                     # 리포 루트 상대 = **정본**. README §2 "운영은 루트 최신본".
+                                        #   ⚠️ lean85/pm_log.json 사본이 생기면 A find_file이 먼저 집어
+                                        #   split-brain — 기동 시 경고(pm_log_writer.warn_if_shadow_copy)
+
+rtd:                                    # PM 권한 — RTD 자동 정지 (헌법 1-1 예외 4, 2026-08-06)
+  auto_inhibit: true                    # ⛔ 차단기 — **B 리뷰 전까지 false** (2026-08-06 심야 갱신).
+                                        #    ※ 시연 구성(false→true) — RTD 자동정지 실연용. 2026-08-13 발표 한정.
+                                        #   판별축 교체(아래) 실측 완료: 스톰 2센서/평시 0센서로 분리 확인.
+                                        #   개통 절차: B(SPC) 리뷰 승인 → baseline 장시간 오발동 0 확인 → true.
+                                        #   오발동 1건 실증 시 즉시 false = 제안 모드 회귀 (예외 4 ⓓ).
+                                        #   CT² ct2_auto_promote 와 같은 패턴.
+                                        #   ⚠️ 코드 폴백도 false (fail-closed 반전 2026-08-07 — #118 리뷰 3건):
+                                        #   params 미주입·형상 불량 = 잠금. 발동은 이 키의 명시적 true 만.
+                                        #   상세 = docs/RTD_발동빈도_현업정합_검증_2026-08-06.md §5-3 + 부록(8/6 심야)
+                                        # (구 주석) 챔버 자동 inhibit 스위치. 발동 조건은 코드 고정(CRITICAL 마커
+                                        #   + suspect_sensors≠∅ — #113 필드 부재 시 미발동 = 안전 기본).
+                                        #   오발동(순정상 정지) 1건 실증 시 false = 제안 모드 회귀(예외 4 ⓓ).
+                                        #   해제 경로(requal 하류)·기록·해제는 스위치와 무관하게 유지.
+  uptime_window_hours: 24               # S1 uptime % 계산 창 (chamber_inhibits 기반)
+  # --- 발동 빈도 정합 손잡이 (2026-08-06 · 근거 docs/RTD_발동빈도_현업정합_검증_2026-08-06.md) ---
+  #   멘토 실수치(장비 한두 달 1회) 환산 목표 = **1 run(69일 압축)당 정지 1~1.5회**.
+  #   실측 12회(8~10배 과잉)라 지속성·다중성 조건을 건다. 임계 확정은 #113 머지 후 스윕(§5-3).
+  # --- 판별축 교체 (2026-08-06 심야 · #117 재시딩 후 실측 — 상황판 D-5) -------------
+  #   구 축 "한 알람의 동시 위반 센서 수 ≥5" **폐기**: 정탐(스톰 SC4 = 3센서)이 임계
+  #   미달인데 평시 오탐 꼬리는 최대 9센서 — 신호보다 노이즈가 넓은 축이었다 (45.9%
+  #   오탐 시절 분포로 그은 기준선이기도 했다). 신 축 = **센서별 지속 이탈률**:
+  #   스톰은 C17 44.1%·C62 39.3%(2개 초과), 평시는 최고 C17 23.0%(0개)로 깨끗이 분리.
+  #   (dev 잔존이던 구 축 ≥5 블록은 본 머지에서 제거 — 2026-08-07)
+  min_violation_sensors: 2              # ① 사전 필터 — 한 알람의 동시 위반 distinct 센서 최소 수.
+                                        #   역할 격하(구 본 판정 → 사전 필터): DB 조회 전 단일 센서
+                                        #   노이즈만 싸게 배제 (B 리뷰 정정 시점의 원래 의미·기본값 복원).
+                                        #   (alert.violations[].sensor 기준 — 계약 키)
+  window_minutes: 10                    # ② 본 판정 창 (wall-clock — delay 0.01 기준 챔버당 약 1천 wafer).
+                                        #   실측 임계(44%/23%)를 잰 창과 동일 정의.
+  breach_ratio: 0.30                    # ② 센서별 N1 이탈률 임계 = (그 센서 N1 알람수)/(챔버 총 알람수).
+                                        #   스톰 39~44% vs 평시 최고 23% 의 중앙 부근. 분자는 N1(실제 한계
+                                        #   이탈)만 — 패턴 룰(N2~N8)은 "지속 이탈" 정의에 안 맞아 제외.
+  min_persistent_sensors: 2             # ② 임계 초과 센서 최소 개수. 평시 만성 소음(C17 하나)과
+                                        #   진짜 이상(복수 센서 동시 지속)의 경계. 1로 내리면 C17 이
+                                        #   23%↑ 흔들릴 때 오정지 위험 — 실측상 2 가 분리선.
+  min_window_alerts: 30                 # ② 분모 가드 (7장: 분모 검증 없이 사용 금지). 창 내 총 알람이
+                                        #   이보다 적으면 판정 불가 → 보수적 미발동 + WARNING 로그.
+                                        #   consumer 적재 중단(8/6 producer 중복 사고: 40분 적재 0건)
+                                        #   시 RTD 침묵을 로그로 드러내는 장치이기도 하다.
+                                        #   ⚠️ tttm.suspect_sensors 와 다르다 — 그건 공통 이동(장비) 신호
+                                        #   이며 reference_suspect 와 동치다 (B 리뷰 2026-08-06 정정).
+  min_common_sensors: 2                 # 장비 승격 — tttm.suspect_sensors(공통 이동 센서) 최소 개수.
+                                        #   B 실측(2026-08-06, decouple 후): reference_suspect 8.65→35.81%로
+                                        #   4배 증가하나 93%가 단일 센서(주로 C61 — 자 왜곡 계열).
+                                        #   ≥2 공통 = 2.56% → 임계 2로 장비 승격을 그 대역에 억제(구 8.8%보다 낮음).
+                                        #   σ 재보정 후 재측정 시 추가 하향 여지(#81).
+  allow_equipment_scope: true           # 장비 단위 정지 허용 (멘토: "챔버 디폴트 + 장비 단위도 정지").
+                                        #   승격 신호 = tttm.reference_suspect(경로① 공통 이동 = 공용 설비 원인).
+                                        #   false 면 항상 챔버 단위로만 — 보수 운영 스위치.
+  exclude_ae_arm: true                  # AE anomaly 단독 근거 정지 금지 — AE는 레짐 전환에 구조적 민감
+                                        #   (PM 후 100% 경보 실증). 이상 신호로는 유효, 정지 근거로는 부적합.
+
+incident:                               # PM 권한
+  merge_window_wafers: 20               # B5 같은 chamber 병합 창
+  reopen_window_wafers: 30              # B6 verifying 내 동일 센서·룰 재발
+  merge_gap_sec: 300                    # P4-3 그루퍼 구현축(시간) — dev 병합 기준. mock alert.timestamp=wall-clock-now.
+                                        #   실물 정합 ≈ merge_window_wafers×86400/throughput(231)≈7480s (mock 캐던스로 튜닝).
+  initial_lifecycle: open               # P4-3 신규 incident 초기 상태 (open→analyzing→pending→verifying→closed/reopened)
+  # --- P6-1 lifecycle 운영 키 (2026-07-28 · PM 결정 2건) ---
+  pending_timeout_sec: 86400            # PENDING 에이징 표시 기준(초) — 초과 시 /approvals/pending 응답 is_aged=true. 표시만·자동 조치 없음 (1-1 HITL — 결정은 사람). 잠정 24h
+  verify_close_sec: 600                 # verifying 자동 종결 sweep — 진입(updated_at) 후 이 시간 무재발이면 closed (그루퍼 sweep). 재발은 병합 시 reopened 전이가 담당. 잠정 10분=데모 배속 — 실물 환산 ≈ reopen_window_wafers(30)일치×86400/231 ≈ 11,220s (튜닝 대상)
+  approval_autostart_poll_sec: 10       # P5-1 완성(2026-07-31) — Brief 적재→승인 그래프 자동 시작 폴러
+                                        #   주기(초). 게이트웨이가 'SUP Brief 있음 + approval_records 0행'
+                                        #   Incident 를 스캔해 그래프 invoke(=PENDING 오픈). 미설정 시 폴러
+                                        #   비활성(경고만) — start_approval CLI 수동 대역으로 회귀
+  # --- RTD 3단: 장비 정지 「제안」 (2026-08-04 PM 신설 — 8/5 GO/NO-GO 대상) ---
+  rtd_consecutive_k: 18                 # 경로① — reference_suspect 가 연속 K 롤업(웨이퍼당 챔버당 1롤업
+                                        #   = 약 K장) 지속되면 정지 제안 카드. 실측(8/3 · 124,846롤업):
+                                        #   노이즈 런 최장 15 / 이벤트 런 최단 20 / 16~19 빈 골짜기 —
+                                        #   마진을 확률적인 노이즈 쪽에 +3. [가안 유지 — B 검증 회신(8/4):
+                                        #   골짜기(16~19)·최단 20 = window(20) 결박, 둘 다 구조적 확정.
+                                        #   감지창 의미: 공통 이동이 19장 이상 지속돼야 발화, 11장(과반+1)
+                                        #   미만은 구조적 미탐(설계상 감지 대상 밖). 본 값은 replay
+                                        #   캘리브레이션값 — 순정상 소크에서도 20+ 런 8건(리플레이 시간
+                                        #   어긋남 혼재) 실측. 확정은 문서정합 후 (PM회신_RTD_K18_20260804 §1·§3)]
+  rtd_scan_rollups: 4000                # 판정 스캔 꼬리 길이(롤업). 실측 최장 런 67 × 4챔버의 여유 배수.
+                                        #   전량 스캔 금지 — 테이블이 시간당 ~2.6만행 성장(append-only)
+  rtd_isolated_min_chambers: 2          # 경로② — 동시 격리 챔버 임계. ⚠️ 2단 챔버 격리 미구현 →
+                                        #   현재 not_wired(판정 불참) — 실값 위장 금지. 2단 배선 시 활성
+
+# --- C. Qual / CT (A 팀원 A) ---------------------------------------------------
+qual:
+  wafer_count: 5                        # C1
+  pass_ae_max: 0.2                      # C2 — 눈금 = ae_score(ECDF 캘리 [0,1], 0.2=VAL P98.5). D1 확정(변경점검 v2)으로
+                                        #   fdc.prediction.anomaly_score와 **동일 눈금**이라 상호 비교 가능.
+  pass_sigma_gap_max: 3.0               # C2 ✅교체 확정 (2026-07-11 회의) — 구 pass_tttm_gap_max_pct(1.0%) 폐기.
+                                        #    σ-갭 판정식: 기준 산포 = 직전 사이클 전체·C12 제외·과도 제외 (사이클_정의 F12·R1)
+  pass_nelson_violations_max: 0         # C2
+  pass_c65_max: 1404                    # C2 train P95 — ⚠ 운영 C65는 proxy 예측값(Qual은 WT 미경유): 과도기 기여 없음 명시 (7/11)
+  use_ae_axis: false                    # PM 회신(2026-08-06) — AE 실서빙이 PM 직후 100% 포화(anomaly=1.0>0.2)라 Qual 전건 FAIL 수렴.
+                                        #   AE는 "레짐 바뀜" 신호이고 Qual은 "새 레짐 건전성"을 묻는 절차라 질문이 다름 → 잠정 제외.
+                                        #   false=σ-갭만 트리거(AE는 ae_anomaly_mean에 기록만) / AE 재학습(post-PM) 후 true 복원. (RTD도 동일 사유로 AE arm 제외)
+
+ct:
+  ct1_trigger: daily                    # C3 ✅**실증 확정** (2026-08-04 멘토) 일간 슬라이딩 재학습. 값 불변, 근거가 추가됐다.
+                                        #   구 이력: 재확정 (2026-07-22, 멘토 7/21) — 당시엔 실측 근거가 주간(B2′) 수치뿐이었다.
+                                        #   실증: 합성 1년 3군 백테스트 → 판정 R1. pooled RMSE D1 54.80 / D7 70.85 / 무재학습 334.24.
+                                        #   ⚠ 이음새 7일 제외 시 개선폭 22.66% → 3.87% (부속 런 4개 3.62~4.07%, 판정 안정).
+                                        #   이득은 PM 온셋에 집중(minor 10.7% / major 5.2% / 평시 2.9%) — 기전은 '레짐 전환 적응'이다.
+                                        #   보고서: src/agent_a_mlops/lean85/예측모델_재보정주기_실험결과_v1.md · 하네스: scripts/exp_recalib_cycle/
+                                        #   (생성만, 배포는 게이트 통과 시만 — 아래 ct1_promote_min_rmse_gain_pct)
+  ct1_window_days: 365                  # C4 ✅재확정 (2026-07-22) 학습 창 1년 (현업 대PM 3~4개월 × 최악 3사이클). 구 ct1_window_cycles:3 대체
+  ct1_require_complete_loud_regime: true  # C4 창 내 완결 요란 레짐(loud PM~다음 PM) <1이면 직전 완결 요란 레짐까지 임시 확장 (희소 전환 표본 보장), 충족 시 365 복귀
+  ct1_promote_min_rmse_gain_pct: 3.0    # C5 champion–challenger 승격 기준 (게이트 D군 — validate_lean85.DEFAULTS 가 단일 소스, 여기서 override)
+  # --- CT①(lean85) 실배선 (설계 정본 src/agent_a_mlops/lean85/CT1_배선_설계_v2.md) ---
+  #   D3 배포 정책 = **① 완전 자동** (2026-08-04 PM 확정). 차단기 키는 §5 ⓓ 절충대로
+  #   비상 정지용으로 남기되 기본 true. 게이트 전 항목 PASS 없이 배포하는 경로는 없다(헌법 3-3 ①).
+  ct1_auto_generate: false              # 생성 스위치 — S1 개통 전 dry-run (CT² 대칭). 개통 시 true
+  ct1_auto_promote: true                # D3 ①안 — 게이트 PASS 즉시 자동 promote. false = 비상 정지(PASS를 SHADOW 기록만, 교체는 사람이 신호 드롭)
+                                        #   ※ **코드 기본값은 false** 다 (ct1_orchestrator). params.yaml 로드 실패 시 `{}`가 되는데
+                                        #     그때 자동 배포가 켜지면 "설정을 못 읽었으니 무인 배포"가 된다 — _params()의 잠금 계약과 모순.
+                                        #   ⚠ 배포 후 감시·자동 롤백(WP-7/S3)은 **설계 v2에서 폐지**됐다(개정 ③ — S3 결번). 대가로
+                                        #     D13(절대 열화 가드)·D14(리로드 스모크)가 확정됐다 → **S1 개통(ct1_auto_generate: true) 전에
+                                        #     WP-9 구현 + WP-8 리허설 + §7-3 ④ PM 확인을 선행**할 것 (설계 v2 §9). 자동 롤백은 없다 —
+                                        #     롤백 = 직전 champion 으로 promote 신호 수동 재드롭(같은 채널, D14 동일 적용).
+  ct1_now_override: ""                  # (선택) 압축시간 데모용 기준 시각 d — 실제로는 env LEAN85_SIM_NOW 를 쓴다. 빈값 = 실시각(naive UTC)
+  ct1_run_at_utc: "22:00"               # = KST 오전 7시 (naive UTC 전일 22:00 — 계약 §8-B-1 시각 규율. 2026-08-05 PM 확정, 구 제안 02:00 대체)
+                                        #   ⚠ ct_id·last_scheduled_day 날짜는 UTC 기준 — KST 아침 실행분의 ID가 전일자로 찍힌다 (설계 §3-1, 표시층만 KST 변환)
+  ct1_poll_sec: 60                      # 트리거 폴링 주기(초)
+  ct1_gate_eval_days: 1                 # D4 공통 버퍼 H — champion·challenger 공통 학습 상한 = d−H. 리허설 스윕 대상(1~7)
+  ct1_gate_min_train_wafers: 1000       # C군 학습 표본 하한 (실험 하네스 하한 100의 운영 상향 — 스윕 대상)
+  ct1_gate_min_eval_wafers: 100         # C군 평가 표본 하한(온셋 제외 후) — 미달 시 SKIP(판정 불가, PASS 아님)
+  ct1_retrain_timeout_sec: 3600         # 재학습 subprocess 상한
+  ct1_retry_backoff_sec: 30             # 루프 실패 후 재시도 대기(초) — 바쁜 루프 방지
+  ct1_max_daily_failures: 3             # H2 (2026-08-07 코드리뷰) — 당일 **연속 FAILED** 상한.
+                                        #   도달하면 그날을 소비하고 ★에스컬레이션 1건으로 종결한다
+                                        #   (익일 정기가 자연 재시도 — D10 노화 경보와 같은 규율).
+                                        #   왜: FAILED 는 그날을 소비하지 않고 backoff 재시도인데,
+                                        #   결정론적 실패(데이터 glob 오경로·스키마 불일치·코드 결함)면
+                                        #   fast-fail 이라 하루 수백 회 = ct_decisions 오염 + 로그 홍수다.
+                                        #   3인 근거: 일시 장애(DB 재기동·락 경합)는 30s×3=90s 안에 대개
+                                        #   풀리고, 그 이상 반복되면 사람이 봐야 하는 신호다. LOCKED 는
+                                        #   세지 않는다(다른 프로세스가 도는 중 = 실패 아님).
+                                        #   0·음수 = 기능 해제(무한 재시도 — 구 동작). 코드 폴백도 3.
+  ct1_gc_keep_unpromoted_days: 14       # D8 미승격 challenger 보존 기간 (승격 계보·직전 champion 은 무조건 보존)
+  ct1_max_stale_champion_days: 7        # D10 연속 미승격 에스컬레이션(경보만 — 게이트 우회 교체 금지). 나이 6일=+6.41 RMSE 실증
+  # --- D13 절대 열화 가드 (설계 v2 §4-7 · WP-9). 단일 소스 validate_lean85.DEFAULTS — 여기서 override ---
+  #   왜: D1(champion–challenger)은 **상대** 비교라 둘이 같은 오염을 학습하면 무력하다
+  #   (AE 라벨 오염 38장이 상대 지표·게이트·PM 보고를 전부 통과한 실증 — 헌법 7장).
+  ct1_gate_abs_rmse_max_ratio: 1.5      # challenger 상한 = BENCH_POOLED(99.84) × 이 배수. 일간 실측 pooled 54.80과
+                                        #   무재학습 발산 334.24 사이의 판별 앵커. 초과 시 개선율과 무관하게 SKIP(승격 불가, FAIL 아님).
+                                        #   ⚠ 잠정치 — WP-8 리허설 스윕 확정 대상 (설계 §10-10)
+  ct1_abs_guard_champion_streak: 3      # champion rmse_before 가 같은 상한을 **연속** 이 횟수 초과하면 ★에스컬레이션(경보만).
+                                        #   단일값 발화 금지 이유: H=1일 pooled RMSE 는 일 변동성이 커서 어려운 wafer 몇 장이 하루를 민다
+  # --- D14 리로드 스모크 (설계 v2 §4-8 · WP-9) — consumer 서빙 보호(헌법 6-2 확장), 게이트 아님 ---
+  #   스왑 직전 최근 wafer 피처로 1회 예측해 ⓐ전량 유한 ⓑ분산>0 ⓒ절대범위를 확인한다.
+  #   ⓒ의 범위값은 **config 키를 늘리지 않고** validate_lean85.DEFAULTS 에 둔다 (설계 §6 — 키 남발 방지).
+  ct1_smoke_buffer_wafers: 50           # 최근 wafer 피처 링버퍼 크기 (predict_wafer 가 빌드한 table 재사용 = 서빙 부하 0)
+  ct1_smoke_min_wafers: 20              # 미달 시 스모크 생략 + 경고 (차단 아님 — 기동 직후 promote 의 영구 교착 방지)
+  ct1_cmd_cwd: "src/agent_a_mlops/lean85"        # retrain·validate·assemble subprocess cwd
+  ct1_data_glob: "Data/synthetic_1y/full_year_*.csv.gz"  # D9 시뮬 단계 raw 원천 (실운영 전환 시 적재기 경로로 교체)
+  # 명령 템플릿 — **미등재 시 실행 금지 가드**(게이트 없이 배포 불가). {placeholder} 는 오케스트레이터가 치환.
+  ct1_assemble_cmd: "python ct1_assemble_trainset.py --data {data} --pm-log {pm_log} --now {now} --out {out} --stamp {stamp}"
+  ct1_retrain_cmd: "python retrain_lean85.py --data {data} --pm-log {pm_log} --tag {tag} --window-meta {window_meta} --result-json {result}"
+  ct1_validate_cmd: "python validate_lean85.py --challenger {challenger} --champion {champion} --eval-data {eval_data} --window-meta {window_meta} --pm-log {pm_log} --out {out}"
+
+  ae_anomaly_threshold: 0.2             # C6 (Qual 기준과 동일값 출발) — 눈금 = ae_score([0,1]).
+                                        #   D1 확정(변경점검 v2): anomaly_score도 같은 눈금이라 정합.
+  model_r2r:                            # C7·C8 ✅멘토 확정 (7/11 — 데이터 검증: 무보정 513 / 당레짐 rolling 85)
+    bias_max_rmse_ratio: 1.0            # C7 |bias| ≤ 1.0 × train RMSE clamp, 초과분 = Incident 신호
+    residual_window_n: 500              # C8 "마지막 요란 PM 이후" fdc.actual 잔차 rolling mean 창
+    reset_on: loud_pm_verdict           # C8 요란 판정 PM에서만 bias=0 리셋, 소정비·조용 PM은 bias 연속 (신규 결정 5)
+                                        #    ※ 구 placeholder 'reset_on_pm: bool'은 全PM 리셋 의미 — 신규 결정 5와 모순이라 키 교체
+    min_labels_for_auto: 50             # 자동 적용 최소 표본 (SE≈σ/√50≈10.7 — 사이클_정의 §4). ✅ 회의 확정 (2026-07-11, C3478와 함께)
+    # --- CT⓪ 실배선 (설계 정본 docs/CT0_ModelR2R_설계방향_v1.md §12-6. 신설 키 2개만) ---
+    mode: "shadow"                      # off(기본) | shadow | active — 보정 경로의 단일 스위치.  ※ 시연 구성(off→shadow)
+                                        #   ⚠ **따옴표 필수**: YAML 1.1 은 따옴표 없는 off/on/yes/no 를
+                                        #     불리언으로 읽는다 (PyYAML safe_load → False). 문자열 축을 고정한다.
+                                        #   off    = updater 미기동 · 서빙 무가산 · `bias_applied` 미발행(현행 페이로드와 동일)
+                                        #   shadow = 계산·ct_decisions(SHADOW) 기록만. 적용·발행 0 (설계 §13 P1)
+                                        #   active = 실적용 — **Scorecard 프로브에서 무보정 대비 개선 실증 전 금지** (P2 게이트)
+                                        #   ※ **코드 기본값도 off** 다 (core.BiasConfig). params 로드 실패 시 `{}` 인데
+                                        #     그때 보정이 켜지면 "설정을 못 읽었으니 무인 적용"이 된다 (ct1_auto_promote 와 같은 규율).
+                                        #   ※ 롤백 = 이 값 플립 1개. 모델·물리 자산 무접촉이라 초 단위 (설계 §13 회귀 조항).
+    min_update_delta: 1.0               # D4 δ — |신규 bias − 현재| 가 이만큼은 움직여야 갱신·기록한다.
+                                        #   왜 필요한가: 라벨마다 ε 변동을 전부 기록하면 231행/일/챔버 노이즈가 된다.
+                                        #   왜 1.0 인가: 눈금은 C65 개수이고 최소 표본 50의 SE≈10.7 이라, 그 1/10 수준은
+                                        #   추정 잡음보다 확실히 작으면서 기록량을 O(변경)로 묶는다. 스윕 대상(P1 리허설).
+                                        #   0 이면 D4 양자화가 무력화된다 — 기동 시 경고 (core.BiasConfig.validate).
+  # --- CT²(AE) 자동 생성 (헌법 3-3 ②. 설계 정본 docs/CT2_배선_설계_v2.md. 개정 승인 전 발동 금지) ---
+  ct2_auto_generate: false              # 자동 생성 스위치 — 개정 승인 + 챔버 스코프 선결 + AE 재보정 착지 후 true
+  ct2_min_train_wafers: 1000            # 최소 표본 게이트 (원 학습 VAL ~980 실증 하한 — 설계 D5·D7)
+  ct2_require_converged: true           # converged=False(미수렴 폴백) 생성 금지 — limit_corrections.settle_converged 조회 (D8)
+  ct2_exclude_violation_wafers: true    # 소급 필터 (firm 한계 소급 재평가 — D6, scripts/ct2_assemble_trainset.py)
+  ct2_backfill_hours: 24                # D10 근사 되감기 창 (requalified_at backward) — 실브로커 실측 후 조정
+  ct2_target_train_wafers: 2000         # 권장 표본 (VAL 400 — P98.5가 상위 6번째). 하한 도달=생성 가능/권장 도달=앵커 건전. A 스윕으로 확정
+  # --- CT²(AE) v2 — 배포 자동화 (설계 v2 D3·D12·D13. 헌법 3-3 ③) ---
+  ct2_auto_promote: false               # 자동 배포 스위치 (구 auto_deploy 키 대체 — 코드 정본과 정합).
+                                        #   false = 차단기 모드: FAIL은 봉인, PASS는 파생 thread 승인으로 회귀 (D13)
+                                        #   true 금지 조건: 배포 후 감시·롤백 미구현 (WP-C) — 헌법 3-3 ③ 개통 조건 ②
+  reconciler_poll_sec: 0                # A14 — CT² promote 이중 쓰기 정합 폴러 주기(초). 0/미설정 = **비활성 (기본 off)**.
+                                        #   ①②(DB 승인·ct_decisions) 커밋 후 ③(신호 드롭) 전에 죽은 배포를 승인 경로
+                                        #   **밖**에서 복구 (#100 리뷰 ② ⓑ — _promote_recovery_needed 의 "주기 점검" 배선).
+                                        #   판정: 무흔적→재드롭(실행당 1건 상한) / 원본 방치→ERROR 로그 / failed/→
+                                        #   에스컬레이션(재드롭 금지) / processed·롤백→무동작. 신호 파일은 옮기지 않는다.
+                                        #   개통 절차: 컨테이너화(B4) 후 실환경 검증 → 값 설정 (ct2_auto_promote 와 같은 패턴).
+                                        #   수동 1회 대역: python -m src.orchestrator.ct2_reconciler --once
+  reconciler_stale_min: 10              # A14 — 원본 자리 신호 방치 판정(분). consumer 신호 폴링 주기의 여유 배수.
+  ct2_cmd_cwd: "src/agent_a_mlops/Autoencoder"   # retrain·validate subprocess 실행 cwd (ae_pipeline 패키지 루트)
+  ct2_retry_backoff_sec: 30             # handle_event 실패 후 seek 되감기 재시도 대기(초) — DB 다운 등 일시 장애의 바쁜 루프 방지 (H1)
+  ct2_retrain_cmd: "python -m ae_pipeline.retrain --data {data} --out {out} --input-schema ct2 --model-version z16_rev3_ct2 --calib-version calib_v2"
+  ct2_validate_cmd: "python -m ae_pipeline.validate_bundle --bundle {bundle} --data {data} --out {out} --input-schema ct2"
+  # 게이트 임계 12종 — 단일 소스는 validate_bundle.DEFAULTS, 여기서 override (D12).
+  #   ⚠️ 값은 원 학습(REPORT_05) 역산 출발값 — WP-D 스윕에서 재산정 대상
+  # --- B1 오경보 **예산** (2026-08-09 기준 개정 v2 §1 · 구 ct2_gate_l5_max 개명) ---
+  #   0.04 는 "측정 오차 반영"이 아니라 **오경보 예산 상향**이다 (e4 23/600=3.83% 의 Wilson
+  #   단측95% 하한 2.74% > 2% — 참 오경보율이 원 목표 2% 를 유의하게 초과함이 확정. z=3.06).
+  #   모집단 정의: B1 이 재는 것은 "**배회 포함 실운영 정상**"의 오경보율이다 (홀드아웃 =
+  #   시간순 후미 정상 표본, C17 장기 drift 등 포함). 원 DoD 2% 는 "순수 조용 정상" 기준.
+  #   ★가드 (v1 원문 승계 — 헌법 1-1 예외 2 선례 "가드 걸고 완화, 위반 시 회귀"):
+  #     시뮬 Scorecard 또는 운영에서 **미탐 1건** 검출 시 즉시 구기준 복귀(→ 0.02) +
+  #     원인 규명 전 재완화 금지. DEFAULTS 는 0.02 로 남겨 두었으므로 이 완화는 매 판정
+  #     `_weakened` 에 잡혀 승인 브리프에 노출된다 — 무조건 예산이 아니라 "가드 걸린 완화".
+  ct2_gate_l5_budget: 0.04              # B1: 홀드아웃 ae_score > qual 비율 예산 (구 l5_max)
+  ct2_gate_recon_rmse_max: 1.0          # B: 채널가중 재구성 RMSE 상한 (정상화 실패 1.046 → 0.332 실측)
+  ct2_gate_calib_mean: 0.05             # B: calib ① 목표 평균
+  ct2_gate_calib_mean_tol: 0.02         # B: calib ① 허용 편차 (±)
+  ct2_gate_val_p95_max: 0.2             # B: calib ② P95 상한 (= qual 임계)
+  ct2_gate_min_val_wafers: 100          # D: calib·scorer 적합 표본 하한
+  ct2_gate_min_gate_wafers: 100         # D: 홀드아웃 하한 — l5_budget을 **측정 가능**하게 하는 값 (100장=1건 1%)
+                                        #   ※ 2026-08-08 주석 현행화: 구 "l5_max 0.02를" 표기는 기준 개정 v1(PR #119)로
+                                        #     상한이 0.04가 된 뒤 남은 잔재다. 현 조합(100장 · 예산 0.04)은 해상도 1%p
+                                        #     < 임계 4%p 라 성립한다. 예산을 다시 낮추면 이 값도 함께 봐야 한다(WP-D 스윕).
+                                        #   ※ 2026-08-09 개정 v2 §1-5: 3밴드 도입 후의 실질 하한은 이 값이 아니라
+                                        #     **CI 반폭**이다. p≈3.5% 에서 n=600 → ±1.25%p 라 예산 4%와 원 목표 2%를
+                                        #     구분 못 한다. 문서의 "≥800장"은 반올림 표기이고 실제 계산은 800→±1.08%p
+                                        #     (미달) / **940장→±1.00%p**. 스윕 목표 = 홀드아웃 총 1000장 (WP-4 항목).
+                                        #     ⚠️ 이 키는 그 목표를 아직 반영하지 않았다 — 스윕 확정 후 별건 PR.
+  ct2_gate_anchor_gap_min_ratio: 0.01   # D: 인접 앵커 간격/전체 폭 하한 (뭉침 차단)
+  ct2_gate_probe_sigma: 4.0             # C: 프로브 채점 σ 배수 (판정 기준점)
+  ct2_gate_probe_min_detect: 0.90       # C: probe_sigma 에서 요구 검출률
+                                        #   ★2026-08-09 개정 v2 §3 — v1 의 0.875 완화 **철회**(원값 복원 = 강화).
+                                        #     완화가 불요해진 이유는 아래 가중 채점 도입이다 (측정 방식 정정).
+  ct2_gate_probe_weighted: true         # C: 판정값을 부록 A 손실가중 w_c 로 가중평균 (Σw·rate/Σw).
+                                        #   근거: 저중요 채널(C57 w=0.3)의 우연 성적과 고중요 채널(C17 w=1.0)을
+                                        #   같은 무게로 섞던 산술평균이 학습 손실과 어긋나 있었다.
+                                        #   실측 e4: 산술 0.8983 → 가중 0.9019 (원값 0.90 복원해도 PASS).
+                                        #   false = 구 산술 거동. 두 값은 항상 리포트에 병기된다(감사).
+  ct2_gate_probe_sigma_grid: [1.0, 2.0, 3.0, 4.0, 6.0]   # C: 리포트용 그리드 (판정은 probe_sigma)
+  # --- E군·B5 (2026-08-05 신설분 · 2026-08-09 dev 이관) -------------------------
+  #   값은 전부 validate_bundle.DEFAULTS 와 **동일**하다 — 이관으로 게이트가 느슨해지지
+  #   않게 하려는 것이다. 여기서 다른 값을 적으면 그 순간 완화/강화가 되고, 완화는 PM
+  #   승인 사항이다(헌법 3-3 ③ ⓑ). 실제 조정은 WP-D 스윕 결과로 별건 PR.
+  ct2_gate_require_labels: true         # E0: 정답지 미제공을 FAIL 로 볼 것인가.
+                                        #   ★true 가 기본이다. 2026-08-05 PM 승인분("클린 덤프 한정 면제")은
+                                        #     **리포 전역 기본값이 아니라 그 라운드 한정 면제**였으므로,
+                                        #     여기서 false 로 적으면 승인 범위를 넘어 상시 완화가 된다.
+                                        #     면제가 필요한 채점은 `--params` 로 그 실행만 덮어쓴다
+                                        #     (예: e4 재채점 = _w_gate_v2/gate_params_v2.yaml).
+  ct2_gate_label_min_detect: 0.80       # E1: 라벨 주입 구간 검출률 하한 (성숙 구간 기준)
+  ct2_gate_label_warmup_k: 20           # E1: 주입 후 경과 k < 이 값은 판정 제외 (drift 램프 초기는 설계상 미검출이 정상)
+  ct2_gate_label_min_wafers: 30         # E1: 판정 가능 최소 라벨 표본 (미달 = SKIP, PASS 아님)
+  ct2_gate_chamber_l5_max: 0.05         # B5: 챔버별 오경보율 상한 (전체 l5_budget 보다 느슨 — 소표본 변동 감안)
+  ct2_gate_chamber_min_wafers: 20       # B5: 이 표본 미만 챔버는 판정 제외 (비율이 이진에 가까워짐)
+                                        #   ※ 2026-08-09 개정 v2 §2: 이 하한은 **밴드 표기 전제로만** 유지한다.
+                                        #     20장에서 5%는 1건이 곧 5%라 사실상 이진 판정이고, 현 챔버당 150장도
+                                        #     CI 반폭 ±3%p 라 "5% 초과가 확정은 아님"까지만 말할 수 있다.
+                                        #     챔버당 300장 상향은 B1 총계 800과 함께 WP-4에서 결정.
+  # --- CT²(AE) 배포 후 감시·자동 롤백 (WP-C. 헌법 3-3 ③ ⓔ·개통 조건 ②) ---
+  #   단일 소스는 ct2_deploy_monitor.WATCH_DEFAULTS, 여기서 override. ⚠️ 값은 출발값 — WP-D 재산정 대상
+  ct2_watch_enabled: false              # 감시 스위치 — WP-C 미실증 구간 기본 off (개통 조건 실증 후 true)
+  ct2_watch_window_wafers: 200          # 배포 후 감시 창 (최근 N wafer) — 분포/교차 판정 표본
+  ct2_watch_min_wafers: 100             # 창 최소 충전 — 미달이면 판정 유예(조기 오발화 방지)
+  ct2_watch_cross_silence_min_events: 10   # SPC 위반 최소 건수 — 이 미만이면 교차 미탐 판정 불가(표본 부족)
+  ct2_watch_cross_silence_max: 0.5      # SPC 위반 wafer 중 AE 침묵(ae_score<qual) 비율 상한 — 초과 시 미탐 발화
+  ct2_watch_p95_drop_ratio: 0.3         # 분포 붕괴 — 배포 후 ae_score P95 < 배포 전 P95 × 이 비율이면 발화(AE 침묵화)
+  ct2_watch_p95_floor: 0.02             # 분포 붕괴 하한 — 배포 후 P95가 이 값 미만(전 0 근접)이면 발화
+  ct2_watch_auto_rollback: false        # 자동 롤백 스위치 — 발화 시 직전 번들로 promote 신호 재드롭. false면 발화만 기록·에스컬레이션
+
+# --- C-2. lean-85 C65 예측 모델 (A 팀원 A) — handoff v1.0 이관 (2026-07-20, PR① 정합화, 헌법 6-4) ---
+# 값은 handoff 동결 스펙과 동일(Phase 0 재현성). lean85_pipeline._load_lean85_config() 폴백 기본값과 일치.
+lean85:
+  onset_days: 7.0                       # 요란 PM 후 레짐-온셋 구간 → low_confidence=1 (B2′ 근거)
+  # --- 재학습 설계 (2026-07-23 — 조합안 §3-1). 코드(should_retrain/retrain) 재구현은 후속 ---
+  retrain_days: 1                       # 재학습 주기(일) = 일간 확정 (C3 13차 — 멘토 7/21 '실시간 스트리밍 1일'. 구 '잠정' 해제 2026-07-23)
+  retrain_window_days: 365              # 슬라이딩 윈도우 = C4 13차 정본 (현업 대PM 3~4개월 × 최악 3사이클 스팬 = 완결 2 + 진행 1.
+                                        #   구 240=120×2는 진행 중 사이클 누락 과소 — 2026-07-23 병합 정합. 스윕 240/300/365 여지, 조정 권한 A)
+  major_cycle_days: 120                 # 메이저 PM 사이클 길이(일) — 사이클_정의 실효 119일과 정합
+  retrain_window_cycles: 3              # 스팬 표기(완결 2 + 진행 1) — retrain_window_days가 정본
+  retrain_window_extend_until_high_regime: true  # 윈도우 내 loud PM 0개면 직전 하이 레짐 온전 포함까지 확장 후 240일 복귀
+  retrain_variable_amount: true         # 추가 학습 개념 — 재학습 데이터 양 가변 허용 (멘토 확정)
+                                        #   ※ ct 절 정본과 정합 완료 (2026-07-23 병합): ct1_trigger=daily · ct1_window_days=365 (C3·C4 13차)
+                                        #     + ct1_require_complete_loud_regime = 본 절 extend_until_high_regime과 동일 조항.
+  bench_pooled_rmse: 99.840             # B2′ 시간축 수용검사 기준(정본 인용). 로컬 venv 재현 100.080 PASS(2026-07-20)
+  bench_tol: 0.5                        # 수용 허용 오차 (R6 — 공식 판정 = 로컬 venv)
+  psi_warn: 0.10                        # 입력 PSI 주의 임계 (drift_report level)
+  psi_alert: 0.25                       # 입력 PSI 경보 임계 — 재학습 트리거 아님: 서빙 보호(low_confidence)·에스컬레이션 채널 (CLAUDE.md 3-3, 2026-07-23)
+  model_search_glob: "models/c65_predictor/*/lean85_*"  # consumer 기동 시 최신 stamp 자동 선택 (타입-우선 구조 4-1). env LEAN85_MODEL_DIR로 직접 지정 가능
+  model_store_dir: "models/c65_predictor/v2_lean85"     # 재학습 산출물 저장 위치(REPO_ROOT 상대). 재학습마다 lean85_<stamp>_<tag>/ 신규 (4-1). champion 승격·v버전 bump는 수동
+  idle_flush_sec: 15                    # 유휴 wafer flush 임계(초) — 이 시간 무입력이면 wafer 완료로 간주해 발행.
+                                        #   0이면 비활성(버퍼 무한 성장 차단용 안전망 해제).
+                                        #   **정본은 이 키다** — 구 300 은 consumer.py env 기본값 하드코딩이었고(헌법 6-1 위반),
+                                        #   조인 타이밍을 고려한 값이 아니라 버퍼 성장 차단용이었다. 2026-08-10 B 요청으로 이관·인하.
+                                        #   env `LEAN85_IDLE_FLUSH_SEC` 는 **임시 override 전용**(설정 시 WARNING — 창을 닫으면
+                                        #   정본으로 돌아간다는 걸 알 수 있게).
+                                        #   🔗 **B `spc.wafer_idle_flush_sec`(30)와 짝** — a-pred 가 먼저 flush 해야 조인이 성립한다.
+                                        #     유효 flush 는 이 값 + IDLE_CHECK_INTERVAL_SEC(5.0) = 20s 이고, 30 대비 여유 10s.
+                                        #     예: 26 으로 두면 26<30 이라 통과처럼 보이지만 유효치 31 이라 **조용히 역전**된다.
+                                        #   근거(A 실측 2026-08-10, train_data.csv 111,675 간격): wafer 내 row 간격 p50 3.0s ·
+                                        #     p99 3.2s · 최대 4.5s · 15s 초과 0건 → 트레이스 절단 없음(최대 간격의 3.3배).
+                                        #   ⚠️ 부수효과: 중복 발행 차단 기억 TTL = 이 값 × FLUSHED_MEMORY_TTL_FACTOR(2.0) 이라
+                                        #     300→15 로 600s→30s 가 된다. "wafer 중간 15s 정지 후 30s 뒤 재개"에서만 성립하며
+                                        #     현 리플레이(도착 간격 ms)에선 사실상 미발생 — 라운드 시 같은 wafer_id 중복 발행 관측 요망.
+
+# --- C-3. anomaly AE (A 팀원 A) — ae_v3 실연동 (AE_실연동_구현계획_v1 · 헌법 4-1·6-4) ---
+anomaly_ae:
+  bundle_search_glob: "models/anomaly_ae/ae_*"   # consumer 기동 시 **폴백** 번들 탐색 (헌법 4-1 버전 디렉토리 규칙 · 경로 하드코딩 금지).
+                                                 # ⚠️ 2026-08-08 주석 정정 — 구 표기 "최신 버전 폴더 자동 선택"은 **사실이 아니다**.
+                                                 #   consumer._resolve_ae_bundle 은 `sorted(glob)[-1]`, 즉 **이름순 마지막**을 고른다.
+                                                 #   그래서 후보가 늘어도 `ae_v1` 이 항상 이긴다 ('ae_cand_...' < 'ae_v1' — 'c' < 'v').
+                                                 #   실측 2026-08-08: 후보 15개 → 선택 `ae_v1`. e4 는 원리적으로 선택되지 않는다.
+                                                 #   → 서빙 대상은 이 glob 이 아니라 **`AE_BUNDLE_DIR` 명시 지정**이 정본이다
+                                                 #     (docker-compose.yml a-pred.environment ← 리포 루트 .env). 이 오해가
+                                                 #     8/6 라이브 전환을 세션 환경변수 의존으로 만들었고, 창을 닫으면 **에러 없이**
+                                                 #     구 번들로 되돌아갔다. 근본 수정(이름순 → mtime 또는 명시 강제)은 A 후속.
+
+# --- D. Agent / LLM (C 팀원 C) --------------------------------------------------
+agent:
+  # --- 검색 폭 3종 (2026-08-06 신설 — 셋이 서로 다른 것을 뜻한다. 6-4 매직넘버 금지) ---
+  #   rag_top_k          : **프롬프트에 싣는** 근거 수 (예산에 직결)
+  #   rag_measure_top_k  : **계측용으로 받아오는** 수 — hit@3 와 hit@10 을 한 라운드로 같이 재려고.
+  #                        프롬프트에는 top_k 만 실으므로 예산 무관하다
+  #   rag_fusion_pool    : **RRF 융합에 넣는 후보 수** — limit 과 분리한 고정값이 핵심이다.
+  #                        전에는 `limit*3` 이라 limit 을 바꾸면 융합 결과(=상위 순위)가 함께 바뀌었고,
+  #                        그래서 "top_k 를 3→5 로 올려보는 실험"이 두 변수를 동시에 건드리고 있었다
+  #                        (2026-08-06 실측: 같은 질의에 limit=3 → PK-TUNE-PLASMA 1위 / limit=10 → PK-SENSOR-C11 1위).
+  rag_measure_top_k: 10
+  rag_fusion_pool: 30                   # = 계측 폭 10 의 3배 (옛 limit*3 비율 유지)
+  rag_top_k: 3                          # D1 🔄 **5 → 3 현행화 (2026-07-30, 사유: 실동작 정합 + 예산)**
+                                        #   구 값 `5 (필터 후)` 는 D2 similarity_min 필터를 전제했으나 그 필터가
+                                        #   **코드 미사용**이다 — hybrid RRF 융합 점수는 cosine 이 아니고 RRF 최댓값이
+                                        #   2/(k+1) 이라 어떤 k 에서도 0.7 을 못 넘는다(걸면 근거 전멸). 전제가 없어
+                                        #   "5 검색 → 3 선별"이 성립하지 않는다.
+                                        #   그리고 3 인 실질 이유는 **프롬프트 예산**이다 — 가변분(cases·kb_hits·logs)
+                                        #   한도 ≈3,600 토큰이고 이 키가 그 손잡이다. recipe 는 여유가 거의 0이라
+                                        #   늘리면 400(예산 초과)이 재발한다(사고 3건). Brief 근거도 계약상 3층 고정.
+                                        #   ⚠️ 필터 복원 + top_k 5 실험 = D18 재검토 항목 (예산 실측 동반 필요)
+  similarity_min: 0.7                   # D2 cosine 기준 (D18). ⚠️ **현재 코드 미사용** —
+                                        #   검색이 hybrid(dense+sparse RRF 융합)라 융합 점수는 cosine 이 아니고,
+                                        #   임계를 dense prefetch 단계에 걸지 융합 후에 걸지 미정이다(D18 재검토 대상).
+                                        #   값을 지우지 않는 이유: 합의안 등재 항목이라 삭제엔 합의가 필요(2026-07-22 리뷰 확인)
+  json_parse_retry: 2                   # D3 [헌법 6-3 고정]
+  slow_path_max_sec: 30                 # D4 slow-path 목표 지연
+  fast_slow_cutoff: 31                  # D4-보조 — 31 = 분기 비활성(가동 건 전부 slow).
+                                        #   W6 storm 시나리오에서 지연 > D4 관측 시 score 분포로 재산정 (B·C)
+  no_case_policy: explicit_empty        # D5 유사 사례 0건 → "사례 없음" 명시 (환각 금지)
+  # --- D 신규 등재 (2026-07-30 — 코드 상수 → config 이관, 헌법 6-1·6-4. PM 권고 PR #65 연장) ---
+  pg_connect_timeout_sec: 3             # D24 Postgres 연결 타임아웃(초) — **무중단의 핵심**. 미기동 시 OS 기본
+                                        #   타임아웃(수십초~분)까지 파이프라인이 멈춘다. "빈 결과로 진행"이 의미를
+                                        #   가지려면 빨리 포기해야 하고, D4(30초) 예산 안에서 근거 조회가 전체를
+                                        #   잡아먹지 않아야 한다. 인프라 값(DSN)은 .env — 이건 예산 값이라 params
+  reanalysis_poll_sec: 15               # D26 [재분석] 버튼(needs_reanalysis) 폴링 주기(초) — PM-4.
+                                        #   사람이 버튼을 누르고 기다리는 화면이라 너무 길면 무응답으로 보이고,
+                                        #   짧으면 유휴 시 DB 조회만 늘어난다. PM 승인 폴러(10초)와 같은 눈금대.
+                                        #   ⚠️ 키가 없으면 폴러를 **띄우지 않는다**(조용한 기본값 금지 — 6-1).
+                                        #   그 경우 버튼을 눌러도 재생성이 안 되므로 기동 로그에 경고를 남긴다.
+  kafka_poll_timeout_ms: 1000           # D25 fdc.alert consumer poll 대기(ms). 짧으면 CPU 회전, 길면 graceful
+                                        #   shutdown(SIGTERM) 반응이 그만큼 늦어진다 (헌법 6-2 트레이드)
+  # --- RTD 해제 근거 Brief (인프라 스텝 3 · #140, 2026-08-08) ------------------------
+  #   챔버가 자동 정지되면(1-1 예외 4) "다시 돌려도 되나"의 근거를 만든다. 트리거는
+  #   게이트웨이 `GET /chambers/status`(계약 §9 — 열린 inhibit 단일 소스). 게이트웨이 주소는
+  #   배포마다 바뀌는 인프라 값이라 .env `AGENT_GATEWAY_BASE_URL` 이다(params 아님).
+  release_brief_poll_sec: 30            # D27 폴링 주기(초).
+                                        #
+                                        #   🔧 **시연에서 "Brief 가 늦게 뜬다" 싶으면 이 값만 내린다.**
+                                        #      코드 변경 없음 — 프로세스 재기동만 하면 반영된다.
+                                        #      체감 지연 ≈ 이 값 + LLM 작성 시간(약 30초)이므로
+                                        #      기본값에서는 정지 후 대략 1분이면 화면에 있다.
+                                        #      · 10  = 프론트 `useChamberStatus` POLL_MS 와 같은 눈금.
+                                        #              **하한은 여기까지**로 본다 — 아래 부하 근거 참조.
+                                        #      · 30  = 기본. 정지 → Brief 약 1분.
+                                        #      · 120~300 = 장시간 방치 운영(시연 아님). 아무도 안 기다릴 때.
+                                        #
+                                        #   왜 30인가: **아무도 기다리지 않는다.** 정지 다음은 사람이 가서
+                                        #   실제로 장비를 점검하는 시간(수십 분~시간)이라, 보고서가 10초
+                                        #   만에 뜨든 1분 만에 뜨든 절차가 달라지지 않는다. 사람이 버튼을
+                                        #   누르고 기다리는 재분석(15초)보다 한 단계 느슨한 이유다.
+                                        #
+                                        #   부하 기준선: 프론트 S1 이 **같은 엔드포인트를 10초마다**
+                                        #   부르고 있다(`frontend/src/live/useChamberStatus.ts` POLL_MS).
+                                        #   30초면 그 1/3이라 사실상 브라우저 탭 하나보다 가볍다.
+                                        #   ⚠️ 다만 그 엔드포인트가 매 호출 `SELECT DISTINCT chamber_id
+                                        #   FROM wafer_predictions`(계속 커지는 표)를 돈다 — 우리가 만든
+                                        #   비용은 아니지만 이 값을 10초 밑으로 내리면 그 부담을 프론트
+                                        #   이상으로 키운다. 더 빨라야 하면 주기가 아니라 그 쿼리를 볼 것.
+                                        #
+                                        #   ⚠️ 키가 없으면 폴러를 **띄우지 않는다**(조용한 기본값
+                                        #   금지 6-1) — 정지가 나도 해제 근거가 안 생기므로 기동
+                                        #   로그에 경고를 남긴다.
+  release_http_timeout_sec: 5           # D28 `/chambers/status` 호출 타임아웃(초). D24(PG 3초)와
+                                        #   같은 정신 — 빨리 포기해야 "이번 주기 skip"이 의미를 갖는다.
+  release_trend_window_min: 60          # D29 회고 ⓑ "정지 직전 창" 길이(분). RTD 본 판정 창
+                                        #   (rtd.window_minutes=10)보다 넓게 잡는다: 판정은 "지금
+                                        #   서야 하나"를, 회고는 "어떻게 나빠져 왔나"를 묻기 때문.
+                                        #   창의 끝은 NOW() 가 아니라 **정지 시각**이다 — 정지 후엔
+                                        #   그 챔버 wafer 가 0장이라 분모만 늘어난다.
+  release_past_limit: 5                 # D30 회고 ⓒ 과거 해제 이력 조회 건수. 프롬프트 예산 안에서
+                                        #   "지난번엔 뭘로 풀렸나"가 보이면 충분하다(rag_top_k=3 눈금대).
+  # --- S9 Agent Copilot (2026-08-11 신설 — 화면 정의서 S9 · 읽기 전용 질의 채널) ---
+  #   Copilot 은 Supervisor 와 **예산 눈금이 다르다.** Supervisor 는 승인 화면에 올라갈 Brief 라
+  #   22초를 써도 되지만, Copilot 은 사람이 타이핑하고 기다리는 대화창이다 — 같은 값을 쓰면
+  #   "물어보면 답이 오는 채널"로 성립하지 않는다(D4 = 시연 체감 지연).
+  copilot_http_timeout_sec: 3           # 게이트웨이 재료 조회 타임아웃(초). release(5초)보다 짧다 —
+                                        #   폴러는 다음 주기가 있지만 대화창은 사람이 보고 있다.
+                                        #   포기하면 그 재료 없이 답한다(근거가 얕아질 뿐).
+  copilot_kb_timeout_sec: 25            # KB 검색 서버(kb_server) 호출 타임아웃(초).
+                                        #   재료 조회(3초)보다 훨씬 길다 — bge-m3 **첫 호출**은
+                                        #   모델 로딩이 붙어 수십 초가 될 수 있다. 시연 전
+                                        #   `POST /warmup` 을 때리면 이 대기는 사라진다.
+  copilot_kb_limit: 3                   # 유사 사례 검색 건수. rag_top_k 와 같은 눈금 — 대화 답변에
+                                        #   카드 3장 넘게 붙으면 사이드 패널 폭에서 안 읽힌다.
+  copilot_violation_limit: 12           # Incident 위반 상세 상한. release_trigger_violation_limit(20)
+                                        #   과 같은 취지인데 더 좁다 — 대화 답변은 Brief 보다 짧고,
+                                        #   스톰 1건이 56행이라 무제한이면 예산을 넘긴다(#154 실측:
+                                        #   ~11,417 토큰 → 400 폴백). 자른 사실은 페이로드에 싣는다.
+  copilot_max_output_tokens: 500        # 응답 상한. 프롬프트가 "answer 3문장 이내"를 요구하므로
+                                        #   그 이상은 규칙 위반분이다. 길어지면 대화창이 스크롤된다.
+  release_trigger_violation_limit: 20   # D31 회고 ⓐ 발동 알람 위반 상한 (2026-08-10 신설 — 실측 사고).
+                                        #   ⓐ 만 유일하게 무제한이었다. 스톰 알람 1건이 위반 56행이라
+                                        #   ReleaseJudgement 프롬프트가 ~11,417 토큰 → 예산 10,288
+                                        #   (max_model_len 12288 − 출력 2000) 초과 → **vLLM 400** →
+                                        #   폴백 Brief(자동 판단 없음)로 떨어졌다. 상한을 두지 않으면
+                                        #   max_model_len 을 올려도 더 큰 스톰에서 같은 자리가 다시 터진다.
+                                        #   ⚠️ 자른 건수는 payload·로그에 **반드시 명시**한다 (7장 no silent caps)
+                                        #   — 근거가 얕아진 것을 사람이 보고 판단해야 하기 때문.
+                                        #   정렬은 severity(CRITICAL 먼저) → rule_id → sensor_id 라
+                                        #   잘리는 쪽은 항상 덜 심각한 위반이다.
+  recipe_delta_max_pct: 3.0             # D6 setpoint ±3% — **명목값 대비 누적** (초과 제안 = 에스컬레이션)
+                                        #   🔄 2026-08-03 정정: 구 주석 "1회"는 B 엔진과 정면으로 달랐다. B는
+                                        #   delta_pct를 nominal_setpoints 대비 누적으로 산출하므로 −2% 적용 후
+                                        #   다시 −2% 제안이면 B가 주는 값은 −4%다. 우리 코드는 B가 준 값을 그대로
+                                        #   3.0과 비교하므로 **동작은 원래 맞았고 문구만 낡았다** (B와 합의분 ⑤).
+                                        #   ⚠️ 온도(temp_target)는 nominal_setpoints에 없어 매번 "현재값 대비"로
+                                        #   재산출돼 항상 ±1% → 이 상한이 사실상 무력하다 (미결 D12 — B·PM 결정 대기)
+  prediction_scan_limit: 500            # D23 suspect_window.member_wafers 부재 시 wafer_predictions 챔버 스캔 상한
+                                        #   (db.fetch_predictions). 눈금은 A4 rolling_window_n(500)에서 따왔으나
+                                        #   목적이 다른 **별개 키** — A9 recalc_interval_wafers 선례. 무한 스캔 시 구 레짐 수치 혼입
+
+llm:                                    # 운용 방침: 로컬 LLM + AWS GPU 셀프호스팅 (외부 API 미사용)
+  embedding_model: bge-m3               # D7 ✅확정 (C 벤치 2026-07-09, g6e — 골든셋 47문항 MRR 0.901 1위, hybrid dense+sparse)
+  embedding_mode: hybrid                # D7 dense+sparse (dense 단독 0.890 대비 우위)
+  kb_seed_target_chunks: 10000          # D8 KB 5타입 합산 목표 — ✅달성 (7/11 실측 13,481청크, W6 목표 3주 선행)
+  gen_model: qwen3.6:35b-a3b            # D9 ✅확정 (C 3파전 재대결 2026-07-14 — 3.6 판정 11/12 최상, 3.0·3.5 각 9/12. 리포트·RAG도 3.6 견고). exaone3.5:32b = 리포트 폴백 보류
+                                        #   ※ 3.0의 리포트 영어 CoT 누출은 3.5부터 해소(3.6 정상). 근거: notes/벤치마크_리포트/llm/llm_qwen_3way_요약.md
+  # ⚠️ gen_model 은 **Ollama 태그** 표기다. vLLM 은 HF repo id 를 요구하며, 모르는 이름을 보내면
+  #    404(모델 미등록)를 낸다 — 2026-07-20 실측. 엔진마다 식별자 체계가 달라 키를 분리한다.
+  #    infra/llm-ec2-experiment/variables.tf 의 `vllm_model` 기본값과 **반드시 일치**해야 한다.
+  vllm_model: QuantTrio/Qwen3.6-35B-A3B-AWQ  # D9-b (2026-07-20) — AWQ 4bit. FP8 은 단일 L40S 에서 KV캐시 OOM
+  temperature: 0.15                     # D10 (0.1~0.2 — 벤치로 최종화)
+  max_output_tokens: 2000               # D11 (리포트 템플릿 확정 후 재조정)
+  seed: 42                              # D12 시연 재현성
+  serving: vllm_guided_json             # D13 vLLM + guided decoding (스키마 토큰 레벨 강제)
+  call_timeout_sec: 20                  # D14
+  call_retry: 1                         # D14 (D3 파싱 재시도와 별개)
+  chars_per_token: 2.2                  # D26 프롬프트 예산 어림용 문자/토큰 비 — 런타임에 토크나이저를 올릴 수
+                                        #   없어 문자수로 근사한다. 2026-07-28 실측 역산값의 **하한**(안전측):
+                                        #   limit 2.27 · maint 2.49 · recipe 2.23. 재측정하면 바뀌는 값이라 config.
+                                        #   ⚠️ 이 값은 **경고용 어림**이고 정밀 게이트는 scripts/measure_prompt_budget.py
+                                        #   (토크나이저 실측·초과 시 exit 1). max_model_len 은 서버 설정이라 .env
+                                        #   (AGENT_LLM_MAX_MODEL_LEN) — infra variables.tf vllm_max_model_len 과 동일값
+
+retrieval:
+  chunk_tokens: 400                     # D15 설계목표(300~500). 구현(chunking.py)은 섹션heading 우선분할 + 문자기준
+  chunk_chars: 900                      # D15 구현값 — error_manual 청커 실제(≈300~400토큰). 로그·사건형은 1레코드=1청크
+  chunk_overlap_pct: 0                  # D15 구현 — heading 경계분할이라 overlap 미사용(원래안 15%는 미적용)
+  reranker_model: bge-reranker-v2       # D16 (도입 여부 + D4 지연 영향 검토 중 — 미구현)
+  rerank_top_k: 5                       # D16
+  fusion_method: rrf                    # D17 hybrid 융합 = RRF(rank fusion, vectordb.hybrid_search). 코드 정합
+  hybrid_dense_weight: 0.7              # D17 dense:sparse 가중 — RRF에선 미적용(가중융합=DBSF 전환 시 사용)
+  distance_metric: cosine               # D18
+  normalize: true                       # D18
+  qdrant_ef_search: 64                  # D19 (D8 규모 확정 후 조정)
+  qdrant_m: 16                          # D19
+
+# deploy(D20~D22) 배포 인스턴스·양자화·서빙 배치는 src/agent_service/config/deploy.yaml 로 분리 (D절, C 팀원 C)
+
+# --- E. 시뮬레이터 / 운영 (PM 윤준호) --------------------------------------------
+simulator:
+  chamber_count: 4                      # E1 — 6→4 (2026-07-20, 멘토 확정: 장비 1대=4PM, 시뮬 스펙 v1.3)
+  demo_speedup: 30                      # E2 (3초 → 0.1초)
+  chamber_offset_sigma: 0.1             # E3 실데이터 센서 std 대비 랜덤 오프셋 폭 · 8/4 밤 0.5→0.1 하향
+                                        #   근거 ⓐ AE 앵커 내 운영(README 대응 a, 관리선·Qual 재시딩 동반)
+                                        #   근거 ⓑ TTTM 크로스챔버 과잉 완화 (2026-08-06 PM 확정)
+                                        #   ⚠️ chamber_offsets.json 이 0.5σ 로 생성돼 있던 것을 #117 이 정합화 —
+                                        #      두 값이 어긋나면 시뮬과 관리선이 5배 벌어진다. 발표까지 동결(세계 이행은 데모 후 일괄)
+  chamber_noise_sigma: 0.05             # E3-보조 행 단위 노이즈 폭 (센서 std 비율) — 코드 매직넘버 이관 (헌법 6-1)
+  replay_post_reset_only: true          # 2026-07-28 — replay를 마지막 major 리셋 이후(seg1)로 필터. C17 등 레짐 운반 센서가 seg0(리셋 전) 발행 시 seg1 시딩 관리선 대비 대편차 오탐(C17 +52.7σ 실측). 시딩 소스가 seg1(settled_after_reset·R3)이라 발행도 맞춤. offset std는 전체 유지(chamber_offsets 불변). false면 전체 replay(구 동작)
+  inject_control:               # M3 ② 실행 중 주입 — 파일드롭 제어 채널 (S11 RUN=주입)
+    enabled: true
+    dir: control/inject         # ROOT 상대 — 드롭된 yaml을 producer 루프가 폴링
+    min_interval_sec: 1.0       # 디렉토리 스캔 최소 간격(초)
+  single_instance:              # 2026-08-07 — producer 중복 기동 차단 (OS 레벨 뮤텍스)
+    enabled: true               #   false면 가드 해제 (디버깅 전용 — 켜 두고 쓸 것)
+    port: 47651                 #   127.0.0.1 전용 **락 포트**(서비스 포트 아님).
+                                #   무관한 프로그램이 점유하면 오탐이 나므로 그때만 변경.
+                                #   근거: producer 2개 → 파티션 도착 순서 역전 →
+                                #   SPC 단조성 가드 전량 드롭 → 적재 42분 무기록 정지
+                                #   (2026-08-06 실측). 상세 = src/simulator/single_instance.py
+                                #   ⚠️ 컨테이너 간 중복은 못 잡는다 (loopback 이 컨테이너마다 별도 —
+                                #   B 리뷰 #129). producer 컨테이너화 시 host network 나 다른 뮤텍스 필요.
+  persistent_run:               # 상시프로세스 baseline 기본값 (S11 최초 기동 시)
+    delay_sec: 0.01
+    limit_wafers: 2000000       # 2026-08-03 정정. 구 주석 '사실상 무제한' 은 틀렸다 —
+                                # 실제 상한은 replay 소스 8,247장이었고 --loop 없이는
+                                # limit 과 무관하게 약 25분 만에 소진·정상종료했다
+                                # (delay 는 row 단위 — 실측 6.6 wafer/s · 68 row/s).
+                                # _cmd_baseline 에 --loop 추가 + 상한 10배.
+                                # 2e6 wafer = 실측 기준 약 84시간 → 데모 1세션은 무제한.
+  throughput_wafers_per_day: 231        # 근거: 3분할 합산 15,919장÷69일=230.7 실측 (구 170은 train 단독 과소집계, 2026-07-08 정정)
+  pm_cycle_months: 4                    # 기본 챔버 PM 주기 (equipment_02는 3 — EAL pm_config에서 오버라이드)
+  label_delay:                          # E6 [비율 정의 — 스케일 불변]
+    months: 2                           #    fail bit(C65)는 fab out 후 확보 가정
+    cycle_ratio_pm4mo: 0.5              #    = 2/4 (PM 4개월 챔버)
+    cycle_ratio_pm3mo: 0.667            #    = 2/3 (PM 3개월 챔버)
+    approx_wafers_fullscale: 13900      #    참고: 231/일 × 60일 (데모 축소 시 비율로 재계산 — 2026-07-08 처리율 정정)
+
+operations:
+  pending_timeout_h: 24                 # E4 (데모 모드에서는 비활성)
+  dashboard_poll_sec: 5                 # E5 (푸시 + 폴링)
+  # --- S8/S0 KPI 집계 (2026-08-12, PM 요청분 — gateway GET /kpi) ---
+  kpi_window_hours: 24                  # 「오늘」 집계 창. **상대 시간**(`NOW() - interval`)으로
+                                        #   쓴다 — `CURRENT_DATE` 는 금지다. compose 의 postgres 에
+                                        #   TZ 설정이 없어 컨테이너가 UTC 로 도는데, KST 00~09시에
+                                        #   리허설하면 `created_at::date`(어제) ≠ `CURRENT_DATE`(오늘)
+                                        #   이라 **에러 없이 전 카드가 0** 이 된다.
+                                        #   데모는 매 회차 reset_demo_state.sql 이 전 테이블 TRUNCATE
+                                        #   (런북 A-2 필수)라 24h 창 = 그 라운드 전체와 같다.
+  kpi_pareto_limit: 8                   # 파레토 응답 행 수 상한. **자르는 건 표시층**이라 여유를
+                                        #   두고 준다(화면은 4~5행만 그린다).
+  kpi_trend_buckets: 7                   # 처리 추이 스파크라인 막대 수. 구간은 **데이터 존재 범위**
+                                        #   (min(created_at)~NOW())를 등분한다 — 달력 7일로 자르면
+                                        #   한 라운드가 4~5분(실측 SC3 4분17초/2,791 wafer)이라
+                                        #   전량이 한 칸에 몰려 막대 1개가 된다(시연에서 고장으로 보임).
+
+# --- P6-4. 원클릭 리허설 스택 (gateway StackRunner — S11 스택 패널) 2026-07-30 ---
+#   run_stack.ps1 5창 수동 기동 대체: docker + GATEWAY + FRONTEND만 사람이 띄우고
+#   나머지 서비스는 브라우저 [서비스 모두 시작] 버튼으로. 커맨드는 run_stack.ps1 정본과 동일.
+stack:
+  services:
+    # b-spc 제거: docker-compose `spc-consumer` 컨테이너로 이관(B6-2 #88). 버튼 스택이
+    #   호스트 프로세스로도 띄우면 같은 consumer group에 컨슈머 2개 → 이중 기동/파티션 꼬임.
+    #   #80(버튼 스택)이 #88(컨테이너) 뒤가 아니라 앞서 머지되며 이 항목이 남았다(#88 리뷰 ①).
+    # a-pred·grouper 제거 (2026-08-07, #130 후속): 둘 다 compose 서비스로 이관(#130 —
+    #   `a-pred`·`grouper`). b-spc 와 같은 이유·같은 처리 — fdc.alert 는 파티션 1개라
+    #   호스트로도 띄우면 하나만 일하고 하나는 **조용히 논다**(둘 다 정상 로그 — 구분 불가).
+    #   특히 grouper 는 컨테이너/호스트가 control/inhibit 가시성이 달라(#130 리뷰 ⛔)
+    #   누가 파티션을 잡느냐에 따라 RTD 정지가 되기도 안 되기도 한다.
+    # c-agent 도 **제거** (2026-08-08 · #142 — 구 "잔류" 사유 해소).
+    #   잔류 사유였던 *"컨테이너는 hf_cache 미충전이라 근거 0장 Brief"* 는 `hf-seed` 원샷
+    #   서비스로 닫혔다(compose 6-0 · S3 에서 bge-m3 복원 → `agent-service` 가
+    #   `service_completed_successfully` 로 대기). 컨테이너에서 임베딩 로드·Qdrant 검색·
+    #   B5-4 실엔진 조달까지 실측 확인했다.
+    #   같은 PR 에서 컨테이너 env 를 호스트와 맞췄다 — `KAFKA_CONSUMER_GROUP`(-demo)·
+    #   `AGENT_KAFKA_OFFSET_RESET`(latest)·`AGENT_API_MODE`(real, 재료 3종 동반).
+    #   ⚠️ 되돌릴 일이 생기면 **셋을 세트로** 되돌린다 — 하나만 어긋나면 호스트와 그룹이
+    #   갈려 둘 다 전 알람을 처리하고 **중복 Brief 가 실제로 생성**된다(#132 PM 주석).

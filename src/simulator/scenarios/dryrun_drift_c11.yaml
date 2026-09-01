@@ -1,0 +1,16 @@
+# P3-1 dry-run 검증 전용 축약본 — drift_c11(SC1)과 동일 패턴, 시점만 압축
+# (원본 SC1은 start 200/dur 300이라 자체 검증에 wafer가 과다 필요 — DoD 채점은 이 파일로,
+#  실 Kafka 시연은 drift_c11.yaml 사용. 두 파일의 정답 라벨은 동일)
+scenario_id: SC0-DRYRUN-DRIFT-C11
+description: SIM_CH_3의 C11이 60 wafer에 걸쳐 +2.5σ 점진 상승 — SC1 축약 검증본
+target_chamber: SIM_CH_3
+pattern: drift
+sensor: C11
+start_after_wafers: 30
+duration_wafers: 60
+magnitude_sigma: 2.5
+ground_truth:
+  type: baseline_shift
+  correct_action: limit_reset
+  correct_disposition: RELEASE
+  c65_effect: none

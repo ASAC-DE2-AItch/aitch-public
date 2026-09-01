@@ -1,0 +1,29 @@
+{
+ "ae_model_version": "z16_rev3_seg1",
+ "ae_calib_version": "calib_v1",
+ "score_contract": "conditioned residual Mahalanobis (단일 ae_raw, 불가침 12)",
+ "n_features": 83,
+ "drift_baseline_B0": 0.1301,
+ "val_set_hash": "fa500f3d",
+ "val_size": 981,
+ "dedup_removed": 1456,
+ "source": "make_drift.py (frozen 번들 drift/manifest 보완 — 계획 §P0-3·P0-4)",
+ "note": "재학습(CT②) 아님 · model/scaler/scorer/calib 은 동봉 frozen 유지, drift 만 신규 산출 (불가침 12 세트 버전 동기).",
+ "artifacts": {
+  "model": "model_seed42.pt",
+  "scaler": "scaler.pkl",
+  "scorer": "scorer.npz",
+  "calib": "calib.json",
+  "drift": "drift.json",
+  "feature_spec": "feature_spec.json",
+  "manifest": "manifest.json"
+ },
+ "sha256": {
+  "model_seed42.pt": "977f94e01f54a8e79b6f31d532c7ee2e043a763f25099e4f851aea6c99cbba58",
+  "scaler.pkl": "d094eb5beda9c6f1e4ead1c7e916a9c1a562da8f501ee1124b7a9001de738632",
+  "scorer.npz": "0f1f1359eeb2ff0d899091e30290e01157c2296feb7a7b14fbe3fcdf355e263b",
+  "calib.json": "f0609cd6b9cd64ae2c5eaf8202850f29f7eeaed2bb7191f57e85b96b37e38f7b",
+  "drift.json": "de24a628f888655fe9a378429487f4562f16aafec5f135de7173a310ca3759b8",
+  "feature_spec.json": "03b584ae96fba1b08ad6fbaa941b5da777568bb95b0ab050448bdf53debb3fe6"
+ }
+}

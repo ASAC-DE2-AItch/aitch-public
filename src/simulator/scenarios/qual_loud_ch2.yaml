@@ -1,0 +1,22 @@
+# 시연 파생 (2026-08-10 밤, PM) — 원본 = qual_loud_ch4.yaml, 대상 챔버만 SIM_CH_2 로 재지정.
+#   왜: 시연 시나리오 2 를 "장비 이상(스톰) → 자동정지 → BM(대PM) → Qual → 요란 → 가한계 →
+#   R9 → 정지 자동 해제 → 재가동" 한 챔버에서 완결하기 위해. 자동정지의 설계 트리거(스톰,
+#   C17 44.1%·C62 39.3% ≥2센서 실측)가 CH_2 타깃이므로 BM(대PM)도 CH_2 에 주입해야 한다.
+#   주입값은 원본과 동일 — 실측 앵커(train_data C33 리셋, wafer 3692) 그대로. 새 물리 없음.
+#   ⚠️ 8/11 오전 검증 대상 — 자동정지 선행 2건(#168 머지 · auto_inhibit=true, 팀원 C님 확인) 후.
+scenario_id: SC2-QUAL-LOUD-CH2
+description: SIM_CH_2 가상 대PM — C33 리셋 + C17 레벨 -37.7 + C11 점화 최심점 +8.85 + Y +940 (CH_2 재지정 파생)
+target_chamber: SIM_CH_2
+pattern: pm_reset
+start_after_wafers: 150          # 웜 월드 주입 시 현재 순번으로 덮어써짐 (§0-2 잔류 승계)
+level_shifts_eng:
+  C17: -37.7
+ignition_shifts_eng:
+  C11: 8.85
+y_shift: 940                     # fdc.actual 경유만 (헌법 1-3)
+ground_truth:
+  type: regime_transition
+  verdict: loud
+  correct_action: provisional_limits_then_requal_retrain
+  correct_disposition: HOLD_UNTIL_QUAL
+  c65_effect: shift_plus_940

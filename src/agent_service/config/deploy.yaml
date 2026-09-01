@@ -1,0 +1,53 @@
+# =============================================================================
+# src/agent_service/config/deploy.yaml — 배포 아키텍처 / 양자화 파라미터 (D20~D22)
+# 근거 문서: docs/config_파라미터_합의안_v1.md D 섹션 (v2, 2026-07-06 D20~D22 추가)
+# 조정 권한자: C 팀원 C (D절)
+# 규칙:
+#   · config/params.yaml(알고리즘 값, 리포지토리 루트)과 분리 — 여기는 인프라/서빙 배치 값
+#   · 값 변경 = config PR + 사유 필수, 키는 snake_case (헌법 6-4)
+#   · 미확정 값은 null + TODO 주석 (조용한 기본값 금지)
+#   · Terraform: src/agent_service/infra/llm-ec2-experiment/terraform.tfvars 와 값 대응
+#     (instance.recommended → var.instance_type, quantization.ollama → S3 GGUF)
+# =============================================================================
+
+# --- 아키텍처 원칙 (D20~D22) --------------------------------------------------
+# 시연은 단일 EC2 + Docker Compose에 전부 적재.
+#   GPU: LLM · 임베딩 · reranker
+#   CPU: Qdrant · Agent 앱(LangGraph) · 시뮬레이터 · 대시보드
+architecture:
+  topology: single_ec2_docker_compose   # D20 시연 배치 원칙
+  placement:
+    gpu: [llm, embedding, reranker]      # 임베딩·reranker는 FP16 유지 (양자화 안 함)
+    cpu: [qdrant, agent_app, simulator, dashboard]
+
+# --- D20 배포 인스턴스 --------------------------------------------------------
+instance:
+  selected: g5.xlarge                    # D20 잠정 — 비용우선. 임베딩이 bge-m3/KORPatent(≤1024·~1GB)면
+                                         #   LLM 30B와 g5(24GB) 동시 적재 가능. 벤치(임베딩 단독)도 Qwen-8B까지 g5에 들어감.
+                                         #   ⚠ 조건부 상향: D7 임베딩이 Qwen3-8B(4096·16GB)로 확정 + LLM과 동시면 g6e.xlarge 필요.
+  recommended: g6e.xlarge                #   여유/Qwen3-8B 동시 채택 시 — L40S 48GB
+  lowcost: g5.xlarge                     #   A10G 24GB — 기본 선택
+  # 참고: g6e=Ada L40S(FP8 HW 지원), g5=A10G(FP8 불가) — quantization.vllm과 연동
+
+# --- D21 LLM 양자화 -----------------------------------------------------------
+quantization:
+  vllm: awq_4bit                         # D21 기본 (W4A16) — A10G·L40S 모두 지원, 품질 손실 적음
+  vllm_l40s_alt: fp8                     #   L40S 선택 시 대안 — Ada HW 지원, FP16급 품질 + 2배 처리량
+  ollama: q4_k_m                         # D22 Ollama 경로로 갈 경우만 GGUF Q4_K_M
+  embedding: fp16                        # 임베딩·reranker는 양자화 금지 (품질 우선)
+  reranker: fp16
+
+# --- 서빙 엔진 (params.yaml llm.serving=vllm_guided_json 과 정합) --------------
+serving:
+  engine: vllm                           # D13 vLLM + guided decoding (스키마 토큰 레벨 강제)
+  # Ollama는 실험/폴백 경로 (infra/llm-ec2-experiment/) — 프로덕션 서빙은 vLLM
+  #
+  # D21 검증 (2026-07-16 착수 — C4-3 잔여):
+  #   배경: D13(vLLM)은 모델 확정 전(7/06) 원칙으로 결정 / 실제 벤치(D9)는 전부 Ollama →
+  #         "qwen3.6에서 vLLM+guided_json 이 실제 도나"와 "우리 부하가 vLLM 을 정당화하나"가 미검증.
+  #   인프라: infra/llm-ec2-experiment 가 serving_engine = ollama | vllm | both 지원.
+  #           both = 같은 박스에서 순차 비교(48GB VRAM 에 FP8 35B + Ollama Q4 동시 적재 불가).
+  #   모델:   vLLM = Qwen/Qwen3.6-35B-A3B-FP8 (공식 FP8 — L40S/g6e 는 Ada FP8 HW지원)
+  #           g5(A10G)는 FP8 불가 → QuantTrio/Qwen3.6-35B-A3B-AWQ 등 AWQ 대안
+  #   측정:   src/agent_service/compare_serving_engines.py (storm 부하 → p50/p95·처리량·JSON유효율)
+  #   결정:   측정 결과는 "D13 유지 vs Ollama 폴백"의 근거 자료 — 최종 확정은 PM 과 함께.

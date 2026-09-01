@@ -1,0 +1,47 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH4-0004",
+  "timestamp": "2026-07-13T10:03:00.000Z",
+  "chamber_id": "SIM_CH_4",
+  "violations": [
+    {
+      "rule_id": "N3",
+      "sensor": "C11",
+      "sensor_name": "DC_Bias",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "6 points continuously increasing",
+      "current_value": -273.0,
+      "limit_version": "v1",
+      "control_limit_upper": -280.0,
+      "control_limit_lower": -340.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 2.3,
+    "top_gap_sensor": "C11",
+    "gap_pct": 4.1,
+    "reference_suspect": false
+  },
+  "context_score": 48,
+  "prediction_context": {
+    "wafer_id": "C64_1003",
+    "predicted_c65": 715.2,
+    "shap_top3": [
+      "C11",
+      "C62",
+      "C17"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C11",
+        "rule": "N3"
+      }
+    ]
+  },
+  "suspect_window": {
+    "start_wafer": "C64_997",
+    "end_wafer": "C64_1003",
+    "basis": "추세 룰 시작점 소급"
+  }
+}

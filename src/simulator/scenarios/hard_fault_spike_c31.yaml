@@ -1,0 +1,18 @@
+# 시나리오: 단발 급변(crazy wafer) — N1(Critical) + B9 자동 HOLD 라우팅 검증
+# 기대 동작: N1 즉발 → severity=Critical → 자동 inhibit(B8) / B9 OR 조건 → HOLD → 승인 스크랩
+# 주: c65_effect=none — 진성 라벨(C65 상승) 결합은 합성 Y 생성기 도입 시(BL4).
+#     현 리플레이 엔진에서는 센서 급변만 재현하고 라우팅(정비+SCRAP 권고)을 채점한다.
+scenario_id: SC2-SPIKE-C31
+description: SIM_CH_1의 C31(파워 계열)이 wafer 1장에서 +6σ 급변 — 하드 폴트 재현 (4챔버 정합 CH5→CH1, v1.3)
+target_chamber: SIM_CH_1
+pattern: spike
+sensor: C31
+start_after_wafers: 120
+magnitude_sigma: 9.0   # 6.0 → 9.0 (2026-08-12 D-2): 예측 임계 교차 보강 — c65_effect: none 설계라
+                       # 예측을 미는 건 센서 급변뿐인데 6σ 로는 predicted_c65 최고 1,545 에 그침
+                       # (B9 임계 미달 → 데모4 HOLD 소재 불가). 시연 임계 1,540(params 시연 구성)과 세트.
+ground_truth:
+  type: hard_fault
+  correct_action: maintenance
+  correct_disposition: SCRAP
+  c65_effect: none

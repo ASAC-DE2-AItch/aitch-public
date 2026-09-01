@@ -1,0 +1,201 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables
+.env
+*.env
+# ⚠️ 위 두 줄은 `.env.bak`·`.env.local` 같은 **접미 변형을 못 잡는다** (2026-08-06 실측:
+#   `.env.bak` 이 8/5 커밋에 딸려 들어가 원격까지 올라갔다). 비밀은 없었지만(키는 플레이스홀더,
+#   DB 비번은 db.py 기본값으로 이미 공개, IP 는 재기동마다 바뀜), 그 파일을 복사해 `.env` 로 쓰면
+#   **죽은 EC2 주소로 라운드를 돌리게 된다** — sync_llm_endpoint 가드가 막으려던 바로 그 사고다.
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+# 실행 로그 파생(.log.err 등) — `*.log` 가 못 잡던 것 (2026-07-16)
+*.log.*
+catboost_info/
+
+# Heavy temporary binaries
+pandoc.zip
+pandoc_bin/
+
+# 로컬 전용 보관 (저장소 제외 — 2026-07-03)
+_archive_local/
+# 정리 전 백업(*.pre_cleanup 등) — 26MB. `_archive_local/` 이 못 잡던 것 (2026-07-16)
+_archive/
+images/
+experiments/
+references/
+
+# 개인 설정 (헌법 8장)
+CLAUDE.local.md
+
+# 클라우드 동기화 임시 폴더 (2026-07-07)
+.tmp.driveupload/
+.tmp.drivedownload/
+
+# Frontend (P3-2)
+frontend/node_modules/
+frontend/dist/
+
+# 분석 산출물·로컬 데이터 드롭 (저장소 제외 — 2026-07-07)
+/analysis_*.png
+/analysis_*.md
+/oof_predictions.csv
+/prepm_to_postpm_predictions.csv
+/plot_valid_time_drift.py
+/sim_events.jsonl
+/sim_events_dryrun.jsonl
+/mock_alerts_sample.jsonl
+frontend/node_modules/
+frontend/dist/
+
+# ── agent_service (R2R) RAG 재생성 캐시 — 커밋 제외 ──
+# 원본 매뉴얼 PDF (저작권/용량, ocr_extract.py로 재수집)
+src/agent_service/rag_kb/error_manual/raw_manuals/*.pdf
+# OCR 페이지 이미지 + 파일 해시 매니페스트 (재생성 가능)
+src/agent_service/rag_kb/error_manual/ocr_cache/
+# 임베딩 증분 매니페스트 (레코드별 텍스트 해시 — 재생성 가능)
+src/agent_service/rag_kb/_shared/embed_manifests/
+# Vision-LLM 크롤러 원본 (대용량·독점 — 드라이브에서 재다운로드)
+src/agent_service/script/vision_pipeline/source_pdfs/manuals/
+src/agent_service/script/vision_pipeline/source_pdfs/slides/
+src/agent_service/script/vision_pipeline/source_pdfs/slides_pdf/
+src/agent_service/script/vision_pipeline/vision_out_test/
+# RAG 소스 크롤러 산출물/내려받은 원본 (재생성 가능)
+src/agent_service/script/rag_sources/error_manual_db/
+src/agent_service/script/rag_sources/process_knowledge_db/
+# MinerU 파싱 산출물 (PDF→md/json, 파이프라인으로 재생성 가능 — vision_out_test 선례) 2026-07-16
+src/agent_service/script/mineru_pipeline/kb_parse/
+src/agent_service/script/mineru_pipeline/mineru_out/
+src/agent_service/script/mineru_pipeline/experiment/exp_out/
+
+frontend/.vite/
+# 대용량 합성 시딩 산출물 — 생성기(scripts/generate_synthetic_cases.py)로 재생성. C 전달은 파일 직접
+/cases_synthetic_v1.jsonl
+/cases_synthetic_v2.jsonl
+# 잡파일·중복·zip·수신물 (커밋 제외)
+*.zip
+/generate_synthetic_cases.py
+/PS *.txt
+/EDA_v2/
+# _v1 없는 파일명도 잡도록 (2026-07-16 — 인라인 주석은 gitignore 에서 패턴 일부로 먹히니 금지)
+/kb_5collections_overview*.xlsx
+
+frontend/src.bak-*/
+frontend/tsconfig.tsbuildinfo
+frontend/trav-dashboard/
+zz_ox_test/
+
+# lean-85 handoff — 로컬 전용/재현 대조 산출물 (커밋 제외 — 계획 §1: repo엔 결과 요약만)
+.ipynb_checkpoints/
+src/agent_a_mlops/lean85/lean85env/
+src/agent_a_mlops/lean85/models/
+src/agent_a_mlops/lean85/pm_log.json
+# B6-3-f — pm_log 원자 쓰기 tmp (write~replace 사이 크래시 시 잔존 가능)
+pm_log.json.tmp.*
+src/agent_a_mlops/lean85/core10_meta_wf.csv
+src/agent_a_mlops/lean85/v13_fdc_pool_wf_oof.csv.gz
+�鳻��_Ŭ��.html
+
+# Claude Code — 개인 로컬 설정 (팀 공유 대상 아님, 헌법 8장 CLAUDE.local.md와 동일 취지)
+.claude/settings.local.json
+
+# 평가 하네스 실행 결과 (실행마다 달라짐 — 리포트만 notes/ 에 남긴다)
+# 작업 노트 전체 — 팀 레포에 올리지 않는다 (2026-07-22)
+#   작업브리핑·학습노트·시작메모·멘토브리핑·벤치마크 원자료는 C 개인 작업 기록이고
+#   (헌법 8: 개인 메모는 git 미추적), origin(개인 fork)에만 둔다.
+#   ⚠ 팀에 전달할 내용은 notes/ 에 묻어두지 말고 **PR 본문·슬랙·docs/** 로 꺼낸다 —
+#     여기 있으면 upstream 에서 안 보인다.
+/src/agent_service/notes/
+
+# 실행 로그 (agent_service) — git 미추적
+/src/agent_service/logs/
+
+# 실행 로그 (B4-1 Context Score 계측) — git 미추적
+#   spc.context_score_contribution_log_path 기본값 = logs/contribution_log.jsonl.
+#   Step 6 상관분석 입력 자산이지만 wafer마다 append되는 런타임 산출물이라 커밋 대상 아님.
+/logs/
+
+scripts/_arm_brief.json
+/control/
+/sim_events_chain.jsonl
+
+# CT 조립 산출물 (학습·평가셋 CSV·창 메타) — git 미추적
+#   CT①은 **일간** 캐던스라 방치하면 연 365쌍의 대용량 CSV가 쌓인다 (조립기 산출물은
+#   재생성 가능한 파생물이고, 감사 정본은 ct_decisions + <stamp>/manifest.json 이다).
+/Data/ct1/
+PM_할일_*.md
+
+# CT 조립 산출물 (학습·평가셋 CSV·창 메타) — git 미추적
+#   CT①은 **일간** 캐던스라 방치하면 연 365쌍의 대용량 CSV가 쌓인다 (조립기 산출물은
+#   재생성 가능한 파생물이고, 감사 정본은 ct_decisions + <stamp>/manifest.json 이다).
+/Data/ct1/
+
+# 리포 **안쪽**에 만든 git worktree (2026-08-08)
+#   `git worktree add _w<PR번호>` 로 PR 별 작업 사본을 두는 관례인데, 등록된 워크트리라도
+#   리포 디렉토리 안에 있으면 `git status` 에 그냥 **untracked 디렉토리로 뜬다**.
+#   `git add -A` 한 번이면 리포 사본이 통째로 스테이징된다 (실측 8/8 — 안쪽 7개:
+#   _w80·_w99·_w100·_w121·_wdev·_wdoc·_wllm). 무시해도 `git worktree list` 로는 그대로 보인다.
+_w*/
+
+# Terraform 작업 산출물 — **레포 전역** (2026-08-09)
+#   지금까지는 terraform 디렉토리마다 자기 `.gitignore` 로만 막았는데, 그 방식은
+#   **그 디렉토리가 존재하는 브랜치에서만** 동작한다. 앱 스택을 레포 루트로 옮기며 실측:
+#   새 경로가 다른 브랜치에서는 그냥 untracked 라 `git add -A` 가 **686MB 프로바이더
+#   바이너리를 통째로 스테이징**했고, 로컬 커밋은 조용히 성공한 뒤 **GitHub 100MB 제한에
+#   막혀서야** 드러났다. 위 `_w*/` 와 같은 병이라 같은 자리에 둔다.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+*.tfplan
+crash.log
+crash.*.log
+#   tfvars 에는 개인 IP·키페어 이름이 들어간다 — example 만 커밋한다.
+terraform.tfvars
+*.auto.tfvars

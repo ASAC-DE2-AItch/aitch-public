@@ -1,0 +1,80 @@
+# =============================================================================
+# 빌드 컨텍스트에서 제외 — 이미지 크기·빌드 시간 방어 (C6-2, 2026-07-29)
+#
+# ⚠️ 이 파일이 없으면 `src/agent_service/infra/` 686MB(terraform 프로바이더 플러그인)가
+#    통째로 빌드 컨텍스트에 실린다. Dockerfile 이 COPY 하지 않아도 **컨텍스트 전송 자체가**
+#    느려지므로 여기서 자른다.
+# =============================================================================
+
+# --- VCS · 캐시 ---
+.git/
+.gitignore
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# --- 인프라 (terraform 플러그인 686MB · 상태파일에 자격 정보 가능) ---
+# ⚠️ 줄 끝 주석은 패턴의 일부로 먹힌다(.gitignore 와 같다) — 주석은 반드시 별도 줄에.
+# 앱 스택 (2026-08-09 레포 루트로 이관 — 팀 공용이라)
+infra/
+# GPU 노드 (llm-ec2-experiment) — 이관은 시연 후
+src/agent_service/infra/
+**/.terraform/
+**/*.tfstate*
+**/tfplan
+
+# --- 개인 노트 (독립 git 레포 · 이미지와 무관) ---
+src/agent_service/notes/
+
+# --- 원본 KB·산출물 (적재는 Qdrant, 이미지엔 불필요) ---
+src/agent_service/rag_kb/
+# 2026-08-08 — `_shared/sensor_mapping.json` 은 **런타임 조회 파일**이라 예외로 남긴다.
+# 표시 계층이 C코드(C11)를 발표용 이름으로 바꿀 때 읽는다(헌법 6-4). 없으면 예외가 아니라
+# `WARNING lookup 파일 없음` 한 줄만 남고 변환이 조용히 안 된다 — 컨테이너 실측 8/8.
+!src/agent_service/rag_kb/_shared/sensor_mapping.json
+src/agent_service/benchmarks/
+src/agent_service/logs/
+src/agent_service/script/
+src/agent_service/scripts/
+
+# --- 타 팀원 코드 ---
+# ⚠️ 2026-08-08 정정: 구 주석은 "agent_service 는 orchestrator 만 import" 였으나 **사실이 아니다.**
+#   `app/pipeline.py:164` 가 `AGENT_API_MODE=real` 일 때 `src.agent_b_spc.recipe_engine`·
+#   `recipe_writer` 를 지연 import 한다(#109 B5-4 실엔진 배선). 그동안 컨테이너가 `mock` 이라
+#   드러나지 않았을 뿐이고, `real` 로 올리면 ImportError 가 `except Exception`(pipeline.py:187)에
+#   삼켜져 **경고 한 줄 남기고 스텁으로 빠진다** — "real 인데 스텁" 이라 밖에서 구분이 안 된다.
+#   그래서 **그 두 모듈만** 예외로 싣는다. 나머지(consumer·엔진 본체)는 계속 제외.
+src/agent_a_mlops/
+src/agent_b_spc/
+# B6-2 G1 — SPC 이미지 빌드가 requirements.txt 를 COPY (소스는 계속 제외=마운트). 인라인 주석 금지(.dockerignore는 줄 앞 # 만 주석) · C 컨텍스트 영향 파일 1개 (PM 리뷰)
+!src/agent_b_spc/requirements.txt
+# 2026-08-08 — c-agent 컨테이너 이관(#142): recipe 정량 엔진 조달 경로. 파일 3개 (B·PM 리뷰)
+!src/agent_b_spc/__init__.py
+!src/agent_b_spc/recipe_engine.py
+!src/agent_b_spc/recipe_writer.py
+# 인프라 스텝1 — a-pred 이미지도 같은 형태(requirements 만 COPY · 소스는 리포 루트 마운트).
+# 위 B6-2 G1 선례와 동일 판단이며 컨텍스트 영향 파일 1개 (A·PM 리뷰)
+!src/agent_a_mlops/requirements.txt
+src/simulator/
+src/gateway/
+# 인프라 스텝1 — gateway 이미지도 requirements 만 COPY (소스는 리포 루트 마운트).
+# 위 B6-2 G1·a-pred 선례와 동일 (PM 리뷰)
+!src/gateway/requirements.txt
+frontend/
+models/
+notebooks/
+data/
+
+# --- 시크릿 (이미지에 절대 들어가면 안 됨) ---
+.env
+.env.*
+!.env.example
+*.pem
+**/terraform.tfvars
+
+# --- 문서 ---
+docs/
+*.md
+!src/agent_service/RUN_MODES.md

@@ -1,0 +1,70 @@
+chamber_id,recipe_id,step,sensor_window,sensor_id,decision,method,decision_reason,activity_ratio,mag_ratio,n_distinct,range,sigma,cv,false_alarm_pct,qa_flags
+C24_0,C6_0,1,settled,C11,EXCLUDE?,sigma,quasi_off(활성도 0.4%·크기 0.5% — 해당 step 비활성),0.0037,0.0047,5,0.5,0.1232999846516783,0.119,5.8,high_false_alarm
+C24_0,C6_0,1,settled,C15,KEEP,sigma,active_normal,0.1394,0.0496,5,11.5,3.745032425636856,1.2678,0.0,wide_limits;high_cv
+C24_0,C6_0,1,settled,C16,KEEP,sigma,active_normal,0.1722,0.061,7,117.5,45.91879938115267,1.1609,0.0,wide_limits;high_cv
+C24_0,C6_0,1,settled,C17,KEEP,sigma,active_normal,1.0,0.444,150,81.33333333333334,14.690073065556115,0.134,1.4,
+C24_0,C6_0,1,settled,C31,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.0,1,0.0,0.0,,0.0,zero_sigma
+C24_0,C6_0,1,settled,C32,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.0,1,0.0,0.0,,0.0,zero_sigma
+C24_0,C6_0,1,settled,C57,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.9689,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,1,settled,C58,KEEP,sigma,active_normal,0.0494,0.9997,8,0.019999999999999574,0.0045298927963456,0.0004,0.0,
+C24_0,C6_0,1,settled,C61,KEEP*,quantile,active_nonnormal(→보완② 관리선 방식 재검토),0.0261,0.2387,57,19.5,3.387624302382335,0.0136,3.6,high_false_alarm
+C24_0,C6_0,1,settled,C62,KEEP,sigma,active_normal,0.0038,1.0,71,20.666666666666515,3.495920212670132,0.001,2.0,
+C24_0,C6_0,1,settled,C63,KEEP,sigma,active_normal,1.0,0.5112,137,290.5,86.34605928360598,0.2452,0.0,
+C24_0,C6_0,1,settled,C9,KEEP,sigma,active_normal,1.0,0.6014,411,26.5855,6.525606557034171,0.1692,0.0,
+C24_0,C6_0,1,settled,D_VDC_RES,EXCLUDE,sigma,F14_drift_dominated_no_alarm_value(→PM/recalib_trigger_backlog),0.0446,1.0,24,6.0,1.5307811745429505,0.0046,0.4,
+C24_0,C6_0,4,settled,C11,KEEP,sigma,active_normal,1.0,1.0,181,135.0,35.619355213911064,0.1605,0.0,
+C24_0,C6_0,4,settled,C15,KEEP,sigma,active_normal,1.0,1.0,8,82.5,36.29323243711755,0.6091,0.0,wide_limits;high_cv
+C24_0,C6_0,4,settled,C16,KEEP,sigma,active_normal,1.0,1.0,24,682.5,310.7674814762334,0.4796,0.0,wide_limits
+C24_0,C6_0,4,settled,C17,KEEP,sigma,active_normal,0.0922,1.0,15,7.5,2.053581051931576,0.0083,0.0,
+C24_0,C6_0,4,settled,C31,KEEP,sigma,active_normal,1.0,1.0,160,109.0,29.643992041961575,0.1821,0.0,
+C24_0,C6_0,4,settled,C32,KEEP,sigma,active_normal,0.25,1.0,7,1.5,0.4448106268981427,0.7086,0.6,wide_limits;high_cv
+C24_0,C6_0,4,settled,C57,KEEP*,quantile,active_nonnormal(→보완② 관리선 방식 재검토),1.0,1.0,8,3.0,0.6880690573923097,0.0606,5.2,high_false_alarm
+C24_0,C6_0,4,settled,C58,KEEP*,quantile,active_nonnormal(→보완② 관리선 방식 재검토),1.0,1.0,69,0.40499999999999936,0.0622258928868564,0.0052,5.4,high_false_alarm
+C24_0,C6_0,4,settled,C61,KEEP,sigma,active_normal,0.1698,1.0,193,127.0,33.210229821564546,0.0319,0.2,
+C24_0,C6_0,4,settled,C62,KEEP,sigma,active_normal,0.0105,0.5005,104,56.5,12.703786287664208,0.0069,0.6,
+C24_0,C6_0,4,settled,C63,KEEP,sigma,active_normal,0.0327,0.3194,23,9.5,2.219741857175865,0.0101,0.0,
+C24_0,C6_0,4,settled,C9,KEEP,sigma,active_normal,0.1281,1.0,134,3.4054999999999964,0.8799358848713172,0.0137,0.0,
+C24_0,C6_0,4,settled,D_VDC_RES,EXCLUDE,sigma,F14_drift_dominated_no_alarm_value(→PM/recalib_trigger_backlog),1.0,0.3439,201,134.5,35.568496770631626,0.3078,0.0,
+C24_0,C6_0,4,transient,C18,KEEP,sigma,active_normal,1.0,1.0,379,6.843333333333334,1.856670595522434,0.9974,0.2,wide_limits;high_cv
+C24_0,C6_0,4,transient,C27,KEEP,sigma,active_normal,1.0,1.0,82,119.33333333333333,43.40191690628766,14.1691,0.0,
+C24_0,C6_0,4,transient,C54,KEEP,sigma,active_normal,1.0,1.0,41,411.66666666666663,146.33395529904044,11.5349,0.0,
+C24_0,C6_0,4,transient,C56,KEEP,sigma,active_normal,1.0,1.0,46,469.3333333333333,154.48149484631264,4.3457,0.0,
+C24_0,C6_0,5,settled,C11,EXCLUDE?,sigma,quasi_off(활성도 0.7%·크기 0.6% — 해당 step 비활성),0.0074,0.0059,3,1.0,0.4580121953239822,0.3528,0.8,wide_limits
+C24_0,C6_0,5,settled,C15,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.386,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,5,settled,C16,KEEP,sigma,active_normal,0.0337,0.3727,3,23.0,6.275401287777961,0.026,0.0,
+C24_0,C6_0,5,settled,C17,KEEP,sigma,active_normal,0.1107,0.9399,12,9.0,2.5596092520389786,0.011,0.0,
+C24_0,C6_0,5,settled,C31,KEEP*,quantile,active_nonnormal(→보완② 관리선 방식 재검토),0.0734,0.0033,8,8.0,1.6502430202058798,3.0958,5.2,high_false_alarm;wide_limits;high_cv
+C24_0,C6_0,5,settled,C32,KEEP,sigma,active_normal,1.0,0.0673,5,6.0,0.4711702059944054,11.151,1.2,wide_limits;high_cv
+C24_0,C6_0,5,settled,C57,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.9689,2,0.0,0.0,0.0,0.2,zero_sigma
+C24_0,C6_0,5,settled,C58,KEEP,sigma,active_normal,0.2963,0.9994,14,0.11999999999999922,0.0342303186960112,0.0029,0.0,
+C24_0,C6_0,5,settled,C61,KEEP,sigma,active_normal,1.0,0.9049,307,748.0,206.85481039353976,0.2194,0.0,
+C24_0,C6_0,5,settled,C62,KEEP,sigma,active_normal,1.0,0.526,342,5371.0,1941.3418733797696,1.009,0.0,
+C24_0,C6_0,5,settled,C63,KEEP,sigma,active_normal,0.0344,0.2938,10,10.0,3.510224972664492,0.0173,0.0,
+C24_0,C6_0,5,settled,C9,KEEP,sigma,active_normal,0.275,0.9591,106,7.311,2.0483055960812053,0.0333,0.0,
+C24_0,C6_0,5,settled,D_VDC_RES,EXCLUDE,sigma,F14_drift_dominated_no_alarm_value(→PM/recalib_trigger_backlog),0.0669,0.9995,11,9.0,1.864938737067336,0.0056,0.4,
+C24_0,C6_0,6,settled,C11,EXCLUDE?,sigma,quasi_off(활성도 0.7%·크기 0.5% — 해당 step 비활성),0.0074,0.0055,3,1.0,0.375950365546716,0.3102,0.0,
+C24_0,C6_0,6,settled,C15,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.386,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,6,settled,C16,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.3627,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,6,settled,C17,KEEP,sigma,active_normal,0.5533,0.7388,71,45.0,11.264341449721533,0.0618,0.0,
+C24_0,C6_0,6,settled,C31,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.0,1,0.0,0.0,,0.0,zero_sigma
+C24_0,C6_0,6,settled,C32,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.0,1,0.0,0.0,,0.0,zero_sigma
+C24_0,C6_0,6,settled,C57,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.9689,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,6,settled,C58,KEEP,sigma,active_normal,0.0617,0.9997,8,0.025000000000000355,0.0063299037004644,0.0005,0.2,
+C24_0,C6_0,6,settled,C61,KEEP*,quantile,active_nonnormal(→보완② 관리선 방식 재검토),0.141,0.2436,103,105.5,17.469402920412776,0.0688,4.2,high_false_alarm
+C24_0,C6_0,6,settled,C62,KEEP,sigma,active_normal,0.0046,1.0,47,24.5,3.920114684497778,0.0011,1.6,
+C24_0,C6_0,6,settled,C63,KEEP,sigma,active_normal,0.3442,0.5351,2,100.0,46.45811784206129,0.126,0.0,
+C24_0,C6_0,6,settled,C9,KEEP,sigma,active_normal,0.5206,0.5052,228,13.84,3.550920052859914,0.1096,0.0,
+C24_0,C6_0,6,settled,D_VDC_RES,EXCLUDE,sigma,F14_drift_dominated_no_alarm_value(→PM/recalib_trigger_backlog),0.0446,0.9995,15,6.0,1.5577194307639988,0.0046,0.0,
+C24_0,C6_0,7,settled,C11,EXCLUDE?,sigma,quasi_off(활성도 0.7%·크기 0.5% — 해당 step 비활성),0.0074,0.005,3,1.0,0.2466184122943076,0.2244,4.2,high_false_alarm
+C24_0,C6_0,7,settled,C15,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.386,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,7,settled,C16,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.3627,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,7,settled,C17,KEEP,sigma,active_normal,0.2828,0.4225,50,23.0,5.834569441183597,0.0559,0.0,
+C24_0,C6_0,7,settled,C31,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.0,1,0.0,0.0,,0.0,zero_sigma
+C24_0,C6_0,7,settled,C32,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.0,1,0.0,0.0,,0.0,zero_sigma
+C24_0,C6_0,7,settled,C57,EXCLUDE,sigma,dead(상수 — 물리적 OFF),0.0,0.9689,1,0.0,0.0,0.0,0.0,zero_sigma
+C24_0,C6_0,7,settled,C58,KEEP,sigma,active_normal,0.0494,0.9997,5,0.019999999999999574,0.0051575867809283,0.0004,0.0,
+C24_0,C6_0,7,settled,C61,KEEP*,quantile,active_nonnormal(→보완② 관리선 방식 재검토),0.0261,0.2378,40,19.5,3.296331871366269,0.0133,3.0,high_false_alarm
+C24_0,C6_0,7,settled,C62,KEEP,sigma,active_normal,0.0037,1.0,43,20.0,3.469415034745796,0.0009,1.2,
+C24_0,C6_0,7,settled,C63,KEEP,sigma,active_normal,0.6885,1.0,2,200.0,99.470340792594,0.1444,0.0,
+C24_0,C6_0,7,settled,C9,KEEP,sigma,active_normal,0.3831,0.1605,274,10.184000000000001,3.256372085164428,0.3164,0.0,
+C24_0,C6_0,7,settled,D_VDC_RES,EXCLUDE,sigma,F14_drift_dominated_no_alarm_value(→PM/recalib_trigger_backlog),0.0446,0.9999,16,6.0,1.553846373513562,0.0046,0.0,

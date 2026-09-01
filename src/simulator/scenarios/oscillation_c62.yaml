@@ -1,0 +1,14 @@
+# 시나리오: 교대 증감 — Nelson N4(연속 교대) 유도, nelson_suite 재료 (M12 커버리지)
+scenario_id: SC5-OSC-C62
+description: SIM_CH_2의 C62가 wafer마다 ±2σ 교대 진동 — 제어 루프 헌팅 재현 (4챔버 정합 CH6→CH2, v1.3)
+target_chamber: SIM_CH_2
+pattern: oscillation
+sensor: C62
+start_after_wafers: 80
+magnitude_sigma: 2.0
+period_wafers: 2
+ground_truth:
+  type: control_hunting
+  correct_action: maintenance
+  correct_disposition: RELEASE
+  c65_effect: none

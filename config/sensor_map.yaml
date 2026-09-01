@@ -1,0 +1,55 @@
+# =============================================================================
+# config/sensor_map.yaml — C코드 → 발표용(표시) 이름 매핑
+#
+# ⚠️ 임시(PLACEHOLDER) — 정본 아님. 2026-07-13 팀원 C가 Contract §0 기준으로 임시 작성.
+#    센서 정의는 모델링(A·B)과 함께 바뀌므로 SSOT는 원천 소유자(PM/데이터사전)가 관리해야 함.
+#    → **PM이 docs/데이터_사전 파생으로 정본 sensor_map.yaml 제공 시 이 파일 교체.** (drift 방지)
+#    현 용도: 그전까지 로컬 publisher/대시보드가 sensor_name을 붙일 수 있게 하는 임시 룩업표.
+#    (Agent Service fixtures 30건은 이 파일 없이도 sensor_name 보유 — 영향 없음.)
+#
+# 근거: 헌법 6-4 "매핑의 단일 소스는 docs/데이터_사전_v1.md(및 그로부터 생성되는
+#       config/sensor_map.yaml)". 값 출처 = docs/API_Contract_명세서.md §0 "발표용 이름" 표
+#       + docs/데이터_사전_v1.md v3.
+#
+# 용도:
+#   · 시뮬레이터 mock_alert_publisher (있으면 violations[].sensor_name 병기 — Contract §3 정합)
+#   · Agent Service 표시 계층 (리포트·Brief·대시보드에서 C코드 → 표시명 변환)
+#
+# 규칙 (헌법 6-4):
+#   · 코드·DB·Kafka 판정 로직은 C코드(C11 등)를 그대로 쓴다. 이 파일은 "표시 계층 전용".
+#   · 발표용 이름을 판정 코드에 하드코딩하면 리뷰 차단 — 반드시 이 파일에서 조회.
+#
+# 포맷: 플랫 매핑 (C코드: 표시명 문자열). publisher `_load_sensor_map().get(sensor)` 가
+#       문자열을 그대로 sensor_name 으로 쓰므로 중첩 금지.
+# =============================================================================
+
+# --- RF·플라즈마 ---
+C1: RF_Power_Set        # RF Power 설정값 (setpoint)
+C11: DC_Bias            # DC Self-Bias 전압 (Vdc) ★핵심 판정 센서
+C12: DC_Bias_Ref        # Vdc 연동 기준값 (레짐 신호 — 손잡이 아님)
+C31: RF_Forward         # RF 출력 실측 (Vdc와 -0.978 동행)
+C32: RF_Reflect         # RF Reflected Power (반사 전력)
+C61: RF_Vneg            # RF 파형 음(-)측 피크 전압
+C62: RF_Vpp             # RF 전극 전압 (Vpp 계열)
+C18: Match_Transient    # RF 매칭 과도 편차
+C27: Match_Residual     # RF 매칭 잔류 편차
+C54: Match_A            # RF Match 축 절대 위치 A
+C56: Match_B            # RF Match 축 절대 위치 B
+C25: Baseline_Drift     # 베이스라인 드리프트 지표 (노후도 보조)
+C63: Aux_63             # 미상 아날로그 (step별 운전점 계단)
+
+# --- 챔버환경·가스·온도 ---
+C4: Gas_Set_A           # 가스 유량 Setpoint A (setpoint)
+C5: Gas_Set_B           # 가스 유량 Setpoint B (setpoint)
+C15: Gas_A              # Gas Flow A 실측
+C16: Gas_B_Actual       # Main Gas Flow 변동 신호 (실측)
+C48: Gas_B_Set          # Main Gas Flow 설정값 (setpoint)
+C17: Chamber_Temp       # 히터/척 온도
+C9: Temp_Aux            # 온도 계열 (C17 동행)
+C57: He_Valve           # He Backside 제어 축
+C58: He_Pressure        # He Backside 압력
+
+# --- 기타 참고 센서 ---
+C59: DualCh_Value       # 2채널 교대 판독 A (재구성 후)
+C60: DualCh_Value       # 2채널 교대 판독 B (재구성 후)
+C50: EndEvent           # Step4 종료 이벤트 카운트 (Endpoint 후보)

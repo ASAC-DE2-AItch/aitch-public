@@ -1,0 +1,63 @@
+# =============================================================================
+# recipe_knob_map.yaml — Recipe R2R 손잡이 맵 · B 소유 (B5-4 v2.2 · §3-1)
+# =============================================================================
+# 단일 소스: docs/데이터_사전_v1.md §0 🎛 (2026-07-11 전수 탐사 + BL8)
+#   ⏳ 각주(C15·C16 인과 짝짓기 단일 신호·C31·C11 파워축 지위 해제) docs 반영 —
+#      C31/C15·C16: 2026-07-30(브랜치) / C11: 2026-08-01 PM 확정. 데이터 사전 C11 각주는 PM docs 커밋.
+#
+# ⚠️ 스코프 축소(D11 · PM 승인 2026-07-30): 앵커 F11에서 손잡이 4개가 동시 이동하고
+#    recipe 내 setpoint std=0.00이라 **축별 기울기가 원리적으로 식별 불가**. 검증된 것은
+#    **C4 → 가스 monitor의 부호·단조성뿐**. 그래서 산출 대상 = C4(가스)·temp_target(BL8)만이고
+#    나머지 축은 등재하되 escalate_only(수치 제안 금지, 에스컬레이션 고정).
+#
+# status: active = 산출 대상 / escalate_only = 인과 관측 불가(에스컬 고정, D11)
+# =============================================================================
+
+nominal_setpoints:              # ← 폐기된 recipe_sensitivity_v1.yaml에서 이관(P0). step4 정착 실측 std 0.00.
+  C6_0: {C4: 40.0, C1: 118.0, C5: 71.0, C41: 10.2316}
+  C6_1: {C4: 60.0, C1: 119.0, C5: 50.0, C41: 14.1919}
+
+axes:
+  gas:
+    status: active
+    knobs:   [C4]
+    monitors: [C16, C15]        # 둘 다 등재 — 인과 짝짓기상 단일 신호(corr 0.93~0.96)
+                                #   제안이 1건인 것은 엔진이 **첫 매칭에서 멈추기** 때문이지
+                                #   그룹 키 때문이 아니다 → 별도 group 키를 두지 않는다(무동작 키 금지, 6-1).
+                                # ⚠ **대표 센서 치환 금지** — basis_sensor는 SHAP 지목 C코드 그대로(헌법 3-3).
+                                # ⚠ **점수 결합에 전용 금지** — context_score 스트림 간 결합은
+                                #   Step6 T14(max/sum/포화)가 함수 형태로 별도 결정한다.
+    direction_sign: +1          # C4↑ → monitor↑. 근거: F11 동일일 2일 +97.2%/+85.2%
+                                #   ⚠ 부호만 검증됨 — 배율 1.82로 비례 아님(게인 미확정, D11)
+  temp:
+    status: active
+    knobs: [temp_target]
+    monitors: [C17]
+    mode: target                # BL8 목표 지정형 — 게인 불요(D8)
+  power:
+    status: escalate_only
+    knobs: [C1]
+    monitors: []                # C11·C31 모두 제거 — PM 확정(C31: 2026-07-30 / C11: 2026-08-01).
+                                #   앵커 1개서 손잡이 4개 동시 이동(rank 1/필요 3) → 파워축엔 유효 측정 짝이
+                                #   원리적으로 부재. corr −0.95~−0.99는 보조 정황일 뿐 — 두 번째 앵커 생기기
+                                #   전엔 C11·C12·C61 모두 동일 결론. (C31은 forbidden이라 어차피 매칭 前 skip)
+    reason: "측정 짝 부재(앵커 1개·rank 1) — 자동 귀속 불가, 사람 판단 필요"
+  gas_b:
+    status: escalate_only
+    knobs: [C5]
+    monitors: []                # 측정 짝 없음 — PM 각주가 독립 확증: 앵커에서 C5 −29.6%인데
+                                #   C16은 +72~82% 상승 → C16은 가스B 추적이 아님(§1-3)
+    reason: "측정 짝 부재 — C4 효과에 묻혀 분리 불가"
+  time:
+    status: escalate_only
+    knobs: [C41]
+    monitors: []
+    reason: "setpoint 아님 — C41 = C10 − C39(경과 시간), step4 std 1.5237/3.8568"
+  gas_main:
+    status: escalate_only
+    knobs: [C48]
+    monitors: []
+    reason: "앵커 Δ −3.3% = 사실상 불변(정보 0) · step4 settled std 201~306"
+
+forbidden: [C12, C17, C31, C65]  # 레짐 도장·모니터·타겟 — parameter_id 절대 금지
+# pressure 축: 대응 setpoint 컬럼이 수집 채널 밖 — 축 미등재 = 자동 에스컬

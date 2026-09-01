@@ -1,0 +1,20 @@
+# 시연 파생 (2026-08-10 밤, PM) — 원본 drift_c11 의 "기준선 노후"를 A2 거버넌스 안에서 재현한다.
+#   원본(+2.5σ)은 재설정 필요 폭이 A2 자동적용 상한(0.5σ)·A3 재심 상한(1.0σ)을 넘어
+#   "승인 → 알람 소멸" 장면이 보정 1회로 성립하지 않는다 (8/10 실측: CH_3 C11 N1 이탈률 32.2%).
+#   0.45σ 는 N1(±3σ)은 침묵하고 추세 룰(연속 편측)만 걸리는 크기 — "기준선이 낡아
+#   중심이 살짝 밀렸다"는 원본 서사 그대로이며, 0.5σ 이내 재설정 승인으로 알람이 꺼진다.
+#   답안지(ground_truth)는 원본과 동일 — limit_reset. 크기만 거버넌스 안으로.
+#   ⚠️ 8/11 오전 검증 ⓐ 대상 — 통과 전 촬영 금지.
+scenario_id: SC1-DRIFT-C11-GENTLE
+description: SIM_CH_3 C11 완만 드리프트 +0.45σ (150 wafer) — 기준선 노후·A2 이내 재설정 시연용 파생
+target_chamber: SIM_CH_3
+pattern: drift
+sensor: C11
+start_after_wafers: 200
+duration_wafers: 150
+magnitude_sigma: 0.45
+ground_truth:
+  type: baseline_shift
+  correct_action: limit_reset
+  correct_disposition: RELEASE
+  c65_effect: none

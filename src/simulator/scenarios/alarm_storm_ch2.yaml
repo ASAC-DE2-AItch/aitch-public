@@ -1,0 +1,14 @@
+# 시나리오: 알람 폭풍 — 한 챔버 다중 센서 동시 위반 → Incident 1건 그룹핑(M13) 검증 (P4-3 DoD)
+# 기대 동작: 알람 N건 발생하되 Incident는 1건 — "알람 1건마다 승인 요청 생성 금지" (헌법 1-4)
+scenario_id: SC4-STORM-CH2
+description: SIM_CH_2의 C11·C17·C62 3개 센서가 동시에 +4σ 계단 이동 — alarm storm 재현
+target_chamber: SIM_CH_2
+pattern: shift
+sensors: [C11, C17, C62]
+start_after_wafers: 100
+magnitude_sigma: 4.0
+ground_truth:
+  type: multi_sensor_shift
+  correct_action: maintenance
+  correct_disposition: HOLD
+  c65_effect: none

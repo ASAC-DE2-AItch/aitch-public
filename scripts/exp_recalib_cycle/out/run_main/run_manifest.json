@@ -1,0 +1,68 @@
+{
+  "generated_at_utc": "2026-08-03 05:16:24",
+  "tag": "main",
+  "seed": 42,
+  "buffer_days": 0,
+  "protocol": "rolling-origin (설계서 §4)",
+  "eval_window": [
+    "2019-02-09",
+    "2019-11-30"
+  ],
+  "n_eval_days": 295,
+  "n_retrain_nominal": {
+    "ARM-D1": 295,
+    "ARM-D7": 43,
+    "ARM-STATIC": 0
+  },
+  "n_distinct_fits": 295,
+  "train_window_days": 365,
+  "time_axis": "C40 실측 타임스탬프 (설계서 §2 균등 근사 대체 — prep_report 참조)",
+  "features_n": 85,
+  "features_sha1": "3d1e5124fad4",
+  "n_estimators": 246,
+  "params": {
+    "learning_rate": 0.027015944979119196,
+    "max_depth": 4,
+    "min_child_weight": 6.891957479431703,
+    "subsample": 0.8181242434283986,
+    "colsample_bytree": 0.8782954149928492,
+    "reg_alpha": 0.07630553997211231,
+    "reg_lambda": 0.05392394823978756,
+    "gamma": 2.353287110798049
+  },
+  "total_fit_sec": 1011.1,
+  "mean_fit_sec": 3.43,
+  "wall_clock_sec": 1051.7,
+  "gate_applied": false,
+  "gate_note": "설계서 §3 — 주 분석은 무조건 교체. 게이트 시나리오는 §8-A 부속 분석",
+  "n_probe_wafers": 500,
+  "wafer_day_map_sha1": "12593a4834ba42acf6ddcf233a0b5637267d279b",
+  "pm_log_exp": [
+    {
+      "date": "2018-12-24 00:00:00",
+      "type": "major",
+      "verdict": "loud",
+      "source": "pm_log.json (실측)"
+    },
+    {
+      "date": "2019-04-22 03:00:00",
+      "type": "major",
+      "verdict": "loud",
+      "source": "pm_ledger.csv (합성)"
+    },
+    {
+      "date": "2019-08-20 03:00:00",
+      "type": "major",
+      "verdict": "loud",
+      "source": "pm_ledger.csv (합성)"
+    }
+  ],
+  "env": {
+    "python": "3.14.3",
+    "xgboost": "3.3.0",
+    "pandas": "3.0.3",
+    "numpy": "2.4.6",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "note": "오프라인 백테스트 — models/ 등재·CHANGELOG 기록 대상 아님 (설계서 §4)"
+}

@@ -1,0 +1,53 @@
+# =============================================================================
+# Agent Service (팀원 C — src/agent_service) 런타임 의존성
+# 루트 requirements.txt(프로젝트 전체)에서 이 서비스가 실제로 import 하는 것만 추린 서브셋.
+#
+# 2026-07-29 (C6-2) 현행화 — 실제 import 전수 스캔 기준으로 맞췄다.
+#   · 추가: qdrant-client · FlagEmbedding · kafka-python · psycopg2-binary
+#     코드는 C5-2 부터 이미 쓰고 있었으나 이 파일이 C4-1 뼈대 상태로 멈춰 있었다.
+#     그대로 컨테이너를 만들면 KB 검색·kafka 라이브 경로가 ImportError 로 죽는다.
+#   · 제거: fastapi · uvicorn — agent_service 안에서 **한 곳도 import 하지 않는다.**
+#     승인 API 는 PM 소관(`src/gateway/`)이라 우리 이미지에 넣을 이유가 없다.
+#     C 가 HTTP 표면을 갖게 되면 그때 다시 넣는다.
+# =============================================================================
+
+# --- 스키마·설정 -------------------------------------------------------------
+pydantic>=2.5            # AlertModel·리포트 스키마 (v2 필수)
+pyyaml>=6.0              # config/params.yaml · kb_schema.yaml 로딩 (헌법 6-1)
+python-dotenv>=1.0       # .env 스위치 로딩 (config.py)
+
+# --- 외부 연동 ---------------------------------------------------------------
+httpx>=0.27              # vLLM/Ollama HTTP 클라이언트 (llm/vllm.py — async)
+psycopg[binary]>=3.1     # psycopg3 — 조치로그 페어링·wafer_predictions 조회 (app/db.py)
+psycopg2-binary>=2.9     # psycopg2 — 그루퍼 연결 규약을 따르는 kafka 라이브 경로 (app/run.py)
+                         #   ⚠️ 두 드라이버 공존은 의도다. 그루퍼(PM)가 psycopg2 를 쓰고
+                         #      app/run.py 가 그 규약을 그대로 따른다. 루트 requirements 와 동일.
+kafka-python>=2.0        # fdc.alert 구독 (app/source.py). confluent-kafka 를 안 쓰는 이유는
+                         #   librdkafka native DLL 이 개발 PC 의 WDAC 에 차단되기 때문 (TSR 참조).
+
+# --- KB 검색 (RAG) -----------------------------------------------------------
+qdrant-client>=1.10      # hybrid query_points / RRF fusion API 가 1.10+ 필요
+FlagEmbedding>=1.2       # BAAI/bge-m3 — kb_schema.yaml mode=hybrid (dense+sparse lexical weights)
+                         #   ⚠️ torch 를 전이 의존으로 끌어온다. 적재분이 Qdrant/S3 에 있어도
+                         #      **질의는 검색할 때마다 그 자리에서 벡터화**해야 하므로 런타임에
+                         #      모델이 프로세스에 떠 있어야 한다(@lru_cache 로 1회 로드).
+                         #      컨테이너에서는 CPU 전용 torch 로 이미지를 줄인다:
+                         #        pip install torch --index-url https://download.pytorch.org/whl/cpu
+                         #      모델 가중치(약 2GB)는 이미지에 굽지 않고 볼륨으로 붙인다 (HF_HOME).
+
+# --- B 정량 엔진 조달 (AGENT_API_MODE=real) ------------------------------------
+# `app/pipeline.py:164` → `src.agent_b_spc.recipe_writer` 가 SQLAlchemy Core 로 조회하고,
+# `app/db.py` 의 sa_engine/sa_connect 도 같은 것을 쓴다. 없으면 ImportError 가
+# `except Exception`(pipeline.py:187)에 삼켜져 **경고 한 줄 남기고 스텁으로 빠진다**
+# — "real 인데 스텁" 이라 밖에서 구분이 안 된다 (2026-08-08 컨테이너 실측 · #142).
+sqlalchemy>=2.0
+
+# --- 테스트 ------------------------------------------------------------------
+pytest>=8.0
+
+# --- KB 검색 서버 (2026-08-11 · S9 Copilot) ------------------------------------
+# `kb_server.py` 전용. 이 이미지는 **임베딩 스택을 이미 갖고 있어서**(FlagEmbedding·torch)
+# 벡터 검색을 여기서 대신 해주고, 게이트웨이는 HTTP 로 물어본다. 게이트웨이에 임베딩을
+# 넣으면 경량 REST 층이 GB 단위로 커진다 — 역할 경계를 지키려고 방향을 뒤집었다.
+fastapi>=0.110
+uvicorn[standard]>=0.27

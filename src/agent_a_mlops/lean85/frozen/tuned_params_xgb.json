@@ -1,0 +1,23 @@
+{
+  "track": "XGBoost",
+  "params": {
+    "learning_rate": 0.027015944979119196,
+    "max_depth": 4,
+    "min_child_weight": 6.891957479431703,
+    "subsample": 0.8181242434283986,
+    "colsample_bytree": 0.8782954149928492,
+    "reg_alpha": 0.07630553997211231,
+    "reg_lambda": 0.05392394823978756,
+    "gamma": 2.353287110798049
+  },
+  "n_estimators": 246,
+  "set": "Conservative-GA(99)",
+  "n_feats": 99,
+  "stable_GKF": 66.743,
+  "seed_mean": 66.978,
+  "seed_worst": 67.661,
+  "R2_honest": 0.935,
+  "objective": "stable_group_kfold(C20) 5-fold OOF RMSE",
+  "cv": "v2.2 stable 폴드맵 + 다중시드 lot-CV(seed 1/2/3)",
+  "note": "Stage B 고정-rounds 정직 수치. Colab 산이면 로컬 재확인 = 공식(R6)."
+}

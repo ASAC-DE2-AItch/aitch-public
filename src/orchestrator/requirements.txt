@@ -1,0 +1,22 @@
+# =============================================================================
+# orchestrator (PM 백엔드) 런타임 의존성 — Incident 그루퍼 컨테이너화
+# =============================================================================
+# ⚠ 범위 = `python -m src.orchestrator.incident_grouper` **한 진입점**이다.
+#   orchestrator 에는 approval_graph(langgraph)·ct2_deploy_approval 도 있지만 그 둘은
+#   gateway 프로세스 안에서 import 되지 실행 단위가 아니다 → 여기 넣지 않는다.
+#   (같은 판단 선례: agent_service/Dockerfile 66~72행 — "우리 경로에 안 걸린다"고
+#    확인한 의존은 이미지에서 뺀다. 무거운 것을 습관으로 넣지 않는다.)
+#
+# 실제 import 전수 (incident_grouper.py — 전부 지연 import):
+#   yaml(52행) · psycopg2(431) · confluent_kafka(432) · dotenv(434, 선택)
+#   stdlib(json·logging·os·signal·datetime·pathlib) 는 제외.
+#
+# 플로어 = 개발/검증 환경(파이썬 3.11). agent_b_spc/requirements.txt 스타일 답습.
+# =============================================================================
+
+confluent-kafka>=2.3        # fdc.alert 컨슈머 (수동 커밋 — at-least-once)
+psycopg2-binary>=2.9        # Postgres (incidents · incident_alerts upsert)
+PyYAML>=6.0                 # config/params.yaml 로딩 (헌법 6-1)
+python-dotenv>=1.0          # .env 로딩 — 코드가 ImportError 를 삼키므로 없어도 죽진 않지만,
+                            #   빠지면 DATABASE_URL 을 못 찾아 기동 직후 RuntimeError 다.
+                            #   compose 는 환경변수를 직접 주지만 호스트 실행 경로를 위해 넣는다.

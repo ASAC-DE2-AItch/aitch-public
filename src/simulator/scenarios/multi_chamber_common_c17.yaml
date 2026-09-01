@@ -1,0 +1,14 @@
+# 시나리오: 다챔버 동시 이탈 — TTTM 역방향 룰(B3: 동시 이탈 ≥ 4/6 → 참조 의심) 검증 (B4-2 DoD)
+# 기대 동작: fleet median 자체가 오염 → reference_suspect=true → 에스컬레이션 경로
+scenario_id: SC3-MULTI-C17
+description: 4개 챔버의 C17(온도 레짐 센서)이 동시에 +3σ 계단 이동 — 공통 원인(참조 의심) 재현
+target_chambers: [SIM_CH_1, SIM_CH_2, SIM_CH_4]  # 4챔버 — CH3(주인공) 제외 3/4 동시 이탈 (역방향 룰 ≥3/4)
+pattern: shift
+sensor: C17
+start_after_wafers: 150
+magnitude_sigma: 3.0
+ground_truth:
+  type: common_cause
+  correct_action: escalate
+  correct_disposition: RELEASE
+  c65_effect: none

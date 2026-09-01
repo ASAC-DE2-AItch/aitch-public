@@ -1,0 +1,36 @@
+# =============================================================================
+# gateway (PM 백엔드 — REST/SSE + 승인 게이트) 런타임 의존성
+# =============================================================================
+# ⚠ 이 이미지는 **gateway + 시뮬레이터** 두 몫이다 (인프라 설계 v2 §7 B3).
+#   S11 RUN 이 `kafka_producer` 를 자식 프로세스로 띄우므로(simulator_runner.py),
+#   시뮬 의존성이 gateway 이미지 요구가 된다. 리소스 리밋도 시뮬 가동분을 포함해 산정할 것.
+#
+# 실제 import 전수:
+#   main.py            — fastapi · psycopg2(+pool·extras) · confluent_kafka · yaml · dotenv
+#   approvals.py       — langgraph.checkpoint.postgres.PostgresSaver · langgraph.types.Command
+#   *_feed.py          — confluent_kafka(Consumer) · psycopg2
+#   simulator_runner   — yaml (subprocess 로 시뮬 기동)
+#   kafka_producer(시뮬) — pandas · confluent_kafka
+#
+# ⚠️ **psycopg 가 두 벌 필요하다.** gateway 본체 코드는 psycopg2 를 쓰는데
+#   LangGraph PostgresSaver 는 **psycopg3** 를 요구한다(루트 requirements 주석과 동일).
+#   둘은 별개 패키지라 공존한다 — 하나로 합치려다 체크포인터가 죽는다.
+#
+# 플로어 = 개발/검증 환경(파이썬 3.11). 설치 실측 버전은 루트 requirements 와 같은 계열.
+# =============================================================================
+
+fastapi>=0.110                    # REST + SSE(StreamingResponse)
+uvicorn[standard]>=0.27           # ASGI 서버 — CMD 진입점
+confluent-kafka>=2.3              # fdc.* 피드 구독 (raw·prediction·actual)
+psycopg2-binary>=2.9              # gateway 본체 (ThreadedConnectionPool · RealDictCursor)
+psycopg[binary,pool]>=3.1         # LangGraph PostgresSaver 전용 (psycopg2 와 공존 — 위 ⚠️)
+langgraph>=0.2                    # 승인 상태머신 interrupt()/Command(resume) (헌법 1-1)
+langgraph-checkpoint-postgres>=2.0  # Pending = interrupt 상태 저장
+PyYAML>=6.0                       # config/params.yaml · 시나리오 YAML
+python-dotenv>=1.0                # .env 로딩
+pandas>=2.0                       # ⚠️ gateway 가 아니라 **시뮬 자식 프로세스**가 쓴다 (B3)
+qdrant-client>=1.9                # S9 Copilot (2026-08-11) — `POST /agent/query` 가 KB 를 읽는다
+                                  #   (손잡이 목록·유사 사례). ⚠️ **scroll/조회 전용**이라 임베딩
+                                  #   모델(FlagEmbedding·torch)은 안 딸려온다 — 검색어 임베딩이
+                                  #   필요한 경로를 추가하면 그때 이미지가 GB 단위로 커진다.
+                                  #   없으면 ModuleNotFoundError 를 삼키고 **근거 0장**이 된다(실측).

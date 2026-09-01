@@ -1,0 +1,47 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH4-0020",
+  "timestamp": "2026-07-13T10:19:00.000Z",
+  "chamber_id": "SIM_CH_4",
+  "violations": [
+    {
+      "rule_id": "N3",
+      "sensor": "C16",
+      "sensor_name": "Gas_B_Actual",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "gradual level shift (process drift)",
+      "current_value": 1756.0,
+      "limit_version": "v1",
+      "control_limit_upper": 1726.0,
+      "control_limit_lower": 1426.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 2.2,
+    "top_gap_sensor": "C16",
+    "gap_pct": 4.2,
+    "reference_suspect": false
+  },
+  "context_score": 95,
+  "prediction_context": {
+    "wafer_id": "C64_1019",
+    "predicted_c65": 760.5,
+    "shap_top3": [
+      "C16",
+      "C5",
+      "C1"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C16",
+        "rule": "N3"
+      }
+    ]
+  },
+  "suspect_window": {
+    "start_wafer": "C64_1013",
+    "end_wafer": "C64_1019",
+    "basis": "추세 룰 시작점 소급"
+  }
+}

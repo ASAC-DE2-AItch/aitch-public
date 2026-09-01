@@ -1,0 +1,25 @@
+# ============================================================
+#  ae_v3_handoff — 재학습(CT②)·추론 의존성
+#  대상 Python: >= 3.10   ·   근거: AE_개발계획 §4 venv
+#  런타임 기준(REPORT_05): torch 2.13.0+cpu · Python 3.10+
+# ------------------------------------------------------------
+#  설치:  pip install -r requirements.txt   +   아래 torch 별도 설치
+#  재현성 잠금:  pip freeze > requirements.lock.txt  (로컬 실측 pin)
+# ============================================================
+
+# ── 핵심 (retrain·infer가 실제 import) ──────────────────────
+numpy>=1.26,<3
+pandas>=2.1,<4
+pyarrow>=14.0          # parquet 로딩
+scikit-learn>=1.3      # QuantileTransformer(스케일) · LedoitWolf(조건화 스코어)
+joblib>=1.3            # scaler.pkl 저장/로드 (scikit-learn 동반 설치)
+
+# ── config 읽기 (선택) ──────────────────────────────────────
+pyyaml>=6.0            # ae_config.yaml 파싱 시
+
+# ── torch: CUDA 때문에 의도적으로 제외 (직접 설치) ──────────
+#   pip install -r 이 CPU 빌드로 기존 GPU torch를 덮어쓰지 않도록 여기서 분리.
+#   CUDA(권장): pip install "torch>=2.2" --index-url https://download.pytorch.org/whl/cu121
+#   CPU 폴백  : pip install "torch>=2.2"
+#   (cu121 등 CUDA 태그는 로컬 드라이버에 맞춰 조정 — 계획 §4 GPU 규칙)
+# torch>=2.2

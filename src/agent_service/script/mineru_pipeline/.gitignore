@@ -1,0 +1,20 @@
+# MinerU 파싱 대용량 바이너리·중간산출물 — PUSH 제외
+# (원본 PDF·추출 이미지·MinerU 중간 JSON은 재생성 가능하므로 커밋하지 않음)
+
+# 원본/렌더 PDF, 추출 이미지
+*.pdf
+*.jpg
+*.jpeg
+*.png
+**/images/
+inbox/
+
+# MinerU 중간 산출물 (대용량)
+*_middle.json
+*_model.json
+*_content_list_v2.json
+
+# 유지 대상(참고): *.md, *_content_list.json, *.py, *.txt, *.log, scores.json
+
+# 실험 내부 MinerU 재파싱본(깊은 경로·중간산출물)
+_mineru/

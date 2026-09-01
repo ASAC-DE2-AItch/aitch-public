@@ -1,0 +1,46 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH1-0041",
+  "timestamp": "2026-07-13T10:40:00.000Z",
+  "chamber_id": "SIM_CH_1",
+  "violations": [
+    {
+      "rule_id": "N3",
+      "sensor": "C11",
+      "sensor_name": "DC_Bias",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "N3: 6점 창 (W0..W5)",
+      "current_value": -273.0,
+      "limit_version": "v1",
+      "control_limit_upper": -280.0,
+      "control_limit_lower": -340.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 2.1,
+    "top_gap_sensor": "C11",
+    "gap_pct": 3.8,
+    "reference_suspect": false
+  },
+  "context_score": 55,
+  "prediction_context": {
+    "wafer_id": "C64_1040",
+    "predicted_c65": 712.0,
+    "shap_top3": [
+      "C11",
+      "C62",
+      "C17"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C11",
+        "rule": "N3"
+      }
+    ]
+  },
+  "trigger_signal": {
+    "raw_rule": "N3",
+    "note": "B 규격 미확정 — optional 파싱 확인용"
+  }
+}

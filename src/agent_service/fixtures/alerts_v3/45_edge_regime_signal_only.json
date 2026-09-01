@@ -1,0 +1,42 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH1-0045",
+  "timestamp": "2026-07-13T10:44:00.000Z",
+  "chamber_id": "SIM_CH_1",
+  "violations": [
+    {
+      "rule_id": "N5",
+      "sensor": "C12",
+      "sensor_name": "DC_Bias_Ref",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "N5: 3점 창 (W0..W2)",
+      "current_value": -287.2,
+      "limit_version": "v1",
+      "control_limit_upper": -296.0,
+      "control_limit_lower": -344.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 1.8,
+    "top_gap_sensor": "C12",
+    "gap_pct": 2.4,
+    "reference_suspect": false
+  },
+  "context_score": 60,
+  "prediction_context": {
+    "wafer_id": "C64_1044",
+    "predicted_c65": 700.0,
+    "shap_top3": [
+      "C12",
+      "C17",
+      "C33"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C12",
+        "rule": "N5"
+      }
+    ]
+  }
+}

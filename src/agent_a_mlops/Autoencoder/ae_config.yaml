@@ -1,0 +1,80 @@
+# ae_config.yaml — ae_v3 최종 배포 설정 · A트랙(세그·AE) · FINAL 확정 2026-07-23
+# 상태: G3 운영 투입 게이트 PASS(REPORT_05) → ae_v3 최종 모델 확정(REPORT_06_FINAL)
+# 재학습(CT②) 시 model + scaler + scorer + calib + drift 세트를 함께 재산출·버전 동기 (계획 §10-4 · 불가침 12)
+# 원본: ae_v3/ae_config.yaml — 핸드오프 번들 레이아웃(scorer.npz·drift.json 추가)으로 갱신
+
+final:
+  status: CONFIRMED
+  gate: "G3 PASS (REPORT_05)"
+  confirmed: "2026-07-23 (REPORT_06_P7_FINAL)"
+  package: ae_v3_handoff (ae_pipeline)
+  retrain_entry: "python -m ae_pipeline.retrain"
+  infer_entry:   "python -m ae_pipeline.infer"
+
+model:
+  version: z16_rev3_seg1
+  path: artifacts/model_seed42.pt
+  arch: "MLP-AE  D→64→32→z16→32→64→D  (GELU·LayerNorm·dropout 0.05)"
+  train: "denoise=0.1 · AdamW lr=1e-3 · cosine · max_ep=400 · patience=30 · seed=42 · 채널가중 MSE"
+  train_set: "seg1·C6_0 TRAIN(3,922, 시간순 앞 80%)"
+
+scaler:
+  type: "QuantileTransformer(output_distribution=normal)"   # rev3 — heavy-tail/bimodal 과도피처(C27/C61/C62) 강건
+  fit: "TRAIN(3,922)만 (불가침 3)"
+  path: artifacts/scaler.pkl
+  registry: { C24: artifacts/scaler.pkl }                   # 공용 모델 1 + 챔버별 스케일러 (계획 §10-3)
+  new_chamber: "시딩 N장 → QT fit → registry 등록 (+선택 calib 보정)"
+
+scorer:                                                     # 핸드오프 확장 — 노트북은 매 실행 VAL로 재계산
+  path: artifacts/scorer.npz
+  content: "μ · sd · 조건화 정밀도 P · W_VEC (VAL 정상 잔차 산출)"
+  note: "동봉 frozen 모델은 최초 1회 `infer build-scorer`로 재구성(원 VAL, 수학 동일). 재학습은 자동 산출."
+
+input_spec:
+  ref: artifacts/feature_spec.json
+  n_features: 83
+  window: "Step4 정착(C42=0)/과도(C42=1) 분리 (불가침 5, 신성불가침)"
+  signals: "물리신호만 (부록 A). 식별자·카운터(C33)·시간(C10/C39/C41)·setpoint(C12)·타깃(C65) 입력금지 (불가침 1·7)"
+  forbidden_input_count: 27
+
+score_contract:                                            # 불가침 12 — 단일 ae_raw 계약 불변
+  ae_raw: "conditioned residual Mahalanobis (VAL 잔차 LedoitWolf 공분산 · 고유값 플로어 → 조건수 캡 100)"
+  higher_is_worse: true
+  alarm_authority: none                                    # 직접 알람 없음 — fdc.prediction 발행, B가 Context Score 합산 (헌법 1-2)
+
+calib:                                                     # 계획 §10-1 · ae_raw → ae_score [0,1]
+  version: calib_v1
+  path: artifacts/calib.json
+  method: ecdf_anchor
+  anchors_percentile: [50, 90, 98.5, 99.5, 99.9]           # VAL raw 분위수 기준
+  anchors_score:      [0.05, 0.10, 0.20, 0.50, 1.00]       # 0.2 = VAL P98.5
+  qual_score_threshold: 0.2                                # C2 합의 연동 · A 제안 근거 = L5 1.53%·5기준 (REPORT_05)
+
+drift:                                                     # ae_drift_score — EWMA 레벨, 단일 ae_raw 후처리(별도 모델 없음)
+  path: artifacts/drift.json                               # 핸드오프 확장 — B0 baseline을 아티팩트로 고정
+  method: ewma_level
+  alpha: 0.05
+  baseline_B0: 0.130                                       # 정상 EWMA P99 (재학습 시 재산출)
+  alarm_level: 0.2
+  formula: "clip( (EWMA_alpha(ae_score) - B0) / (0.2 - B0), 0, 1 )"
+  state: "per-chamber (stateful — 챔버별 EWMA 상태, DriftTracker)"
+  role: "느린 sub-σ 지속 드리프트 + 레짐 전환 감지 (per-wafer ae_score가 놓치는 것)"
+
+output_fields:                                             # 계획 §11-2 → fdc.prediction (B 팀원 B)
+  - ae_score          # float[0,1] (캘리)
+  - ae_raw            # float (조건화 Maha)
+  - ae_top_channels   # list[str] C코드 (Evidence Card)
+  - ae_drift_score    # float[0,1] (EWMA 스트림)
+  - ae_model_version
+  - ae_calib_version
+  - transient_context # bool (C-3 컨텍스트)
+
+nfr:
+  N1_inference: "~3.2 ms/wafer (피처추출 제외, <500ms)"
+  N2_retrain: "prod-GPU ≤2분 목표 (CPU-fallback 수 분 — 계획 P0-1)"
+  N3_model_size: "~71 KB (.pt) · torch 외 특수 의존성 없음"
+
+gates:
+  G1: "PASS (REPORT_03) — L2①A 0.981 · L2③ 1.000 · L4 0.999 · L6 OK · 재현성 5해시"
+  G3: "PASS (REPORT_05) — 캘리 5기준 · L5 1.53% · drift · CT² 정상화 · NFR"
+  FINAL: "CONFIRMED (REPORT_06) — ae_v3 최종 모델 확정 · 재학습 로직 포함 핸드오프"

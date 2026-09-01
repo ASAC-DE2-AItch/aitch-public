@@ -1,0 +1,81 @@
+{
+  "runs": [
+    {
+      "tag": "main",
+      "seed": 42,
+      "buffer_days": 0,
+      "rule": "R1",
+      "gain_pct": 22.662,
+      "p": 2.6691304538024725e-08,
+      "rule_excl_warmup": "R1",
+      "gain_excl_warmup": 3.87,
+      "rmse_d1": 54.796,
+      "rmse_d7": 70.853,
+      "rmse_static": 334.237,
+      "onset_major_gain": 5.169,
+      "m3adj_age6": 6.411,
+      "age0_identity_ok": true
+    },
+    {
+      "tag": "buf1",
+      "seed": 42,
+      "buffer_days": 1,
+      "rule": "R1",
+      "gain_pct": 17.236,
+      "p": 3.4878614903356973e-06,
+      "rule_excl_warmup": "R1",
+      "gain_excl_warmup": 3.622,
+      "rmse_d1": 58.447,
+      "rmse_d7": 70.619,
+      "rmse_static": 325.423,
+      "onset_major_gain": 3.046,
+      "m3adj_age6": 7.196,
+      "age0_identity_ok": true
+    },
+    {
+      "tag": "seed43",
+      "seed": 43,
+      "buffer_days": 0,
+      "rule": "R1",
+      "gain_pct": 20.45,
+      "p": 8.695134497196519e-10,
+      "rule_excl_warmup": "R1",
+      "gain_excl_warmup": 4.074,
+      "rmse_d1": 54.793,
+      "rmse_d7": 68.879,
+      "rmse_static": 303.922,
+      "onset_major_gain": 3.953,
+      "m3adj_age6": 7.704,
+      "age0_identity_ok": true
+    },
+    {
+      "tag": "seed44",
+      "seed": 44,
+      "buffer_days": 0,
+      "rule": "R1",
+      "gain_pct": 20.398,
+      "p": 9.244777380474122e-09,
+      "rule_excl_warmup": "R1",
+      "gain_excl_warmup": 3.83,
+      "rmse_d1": 54.453,
+      "rmse_d7": 68.407,
+      "rmse_static": 301.092,
+      "onset_major_gain": 4.839,
+      "m3adj_age6": 6.565,
+      "age0_identity_ok": true
+    }
+  ],
+  "rules_main": [
+    "R1"
+  ],
+  "rules_excl_warmup": [
+    "R1"
+  ],
+  "gain_excl_warmup_range": [
+    3.622,
+    4.074
+  ],
+  "stable": true,
+  "call": "판정 안정 — 모든 런에서 같은 규칙",
+  "note": "동결 seed 42(tag=main)가 정본. 나머지는 부속 런 (설계서 §6)"
+}

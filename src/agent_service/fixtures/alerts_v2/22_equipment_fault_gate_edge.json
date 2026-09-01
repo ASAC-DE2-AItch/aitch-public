@@ -1,0 +1,42 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH2-0022",
+  "timestamp": "2026-07-13T10:21:00.000Z",
+  "chamber_id": "SIM_CH_2",
+  "violations": [
+    {
+      "rule_id": "N1",
+      "sensor": "C31",
+      "sensor_name": "RF_Forward",
+      "window": "transient",
+      "severity": "CRITICAL",
+      "description": "single point beyond 3σ (spike)",
+      "current_value": 342.0,
+      "limit_version": "v1",
+      "control_limit_upper": 314.0,
+      "control_limit_lower": 266.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 3.6,
+    "top_gap_sensor": "C31",
+    "gap_pct": 8.9,
+    "reference_suspect": false
+  },
+  "context_score": 31,
+  "prediction_context": {
+    "wafer_id": "C64_1021",
+    "predicted_c65": 1210.0,
+    "shap_top3": [
+      "C31",
+      "C11",
+      "C62"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C31",
+        "rule": "N1"
+      }
+    ]
+  }
+}

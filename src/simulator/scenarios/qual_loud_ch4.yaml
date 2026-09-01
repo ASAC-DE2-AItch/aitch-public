@@ -1,0 +1,25 @@
+# 시나리오 2 (M3 DoD): 대PM(가상) 후 "요란" 레짐 전환 — Qual 4지표 → 가한계 → 재산정 → CT②
+# 실측 앵커: train_data C33 리셋 사건 (wafer idx 3692, 전후 100·300장 창 — 2026-07-20 측정 스크립트):
+#   ΔC17 = -37.7 (N=300, wafer-mean 정착 / N=100은 -0.7 — 추세 혼입으로 창 민감. 방향은 하강 일관)
+#   ΔC9  ≈ 0    (열 쌍 동행은 wafer 내 궤적 얘기 — 레짐 계단에선 침묵. 주입하지 않는 것이 재현이며,
+#                C17만 움직여 C17·C9 관계가 깨지는 것 자체가 AE 반응의 실측 근거)
+#   ΔC11 wf_min = +8.85 (+5.0~5.4σ, 창 무관 안정 — F14 방향 재현. 과도 행 한정 주입 → 정착 평균 침묵 유지)
+#   ΔY   = +921~958 → +940 채택 (pre ~620 → post ~1,560)
+#   ※ 구 인용 "+317"은 BL3 프라이어 추정치 계열로 추정 — 산정 창 대조 필요 (A 확인 항목, v5.2)
+# 확장 후보 (주입 안 함 — 레짐 반응 실측 미검증): C32 과도, C54/C56 매칭 위치, C15/C16 가스 실측
+scenario_id: SC2-QUAL-LOUD-CH4
+description: SIM_CH_4 가상 대PM — C33 리셋 + C17 레벨 -37.7 + C11 점화 최심점 +8.85 + Y +940 (요란 레짐 전환 재현)
+target_chamber: SIM_CH_4
+pattern: pm_reset
+start_after_wafers: 150          # 챔버 150장 정상 구간 후 개방 (스냅샷·baseline 확보)
+level_shifts_eng:                # 정착 레벨 영구 계단 (공학단위)
+  C17: -37.7
+ignition_shifts_eng:             # 과도(stabilization_flag=1) 행 한정 (공학단위)
+  C11: 8.85
+y_shift: 940                     # fdc.actual 경유만 — raw 미포함 (헌법 1-3)
+ground_truth:
+  type: regime_transition
+  verdict: loud                  # 기대 판정 = 요란 (Qual 4지표)
+  correct_action: provisional_limits_then_requal_retrain   # 가한계 → Phase 2 재산정(R9) → CT②(AE)
+  correct_disposition: HOLD_UNTIL_QUAL
+  c65_effect: shift_plus_940

@@ -1,0 +1,42 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH3-0027",
+  "timestamp": "2026-07-13T10:26:00.000Z",
+  "chamber_id": "SIM_CH_3",
+  "violations": [
+    {
+      "rule_id": "N1",
+      "sensor": "C62",
+      "sensor_name": "RF_Vpp",
+      "window": "transient",
+      "severity": "CRITICAL",
+      "description": "N1: 1점 창 (W0..W0)",
+      "current_value": 2157.5,
+      "limit_version": "v1",
+      "control_limit_upper": 1965.0,
+      "control_limit_lower": 1635.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 3.6,
+    "top_gap_sensor": "C62",
+    "gap_pct": 8.9,
+    "reference_suspect": false
+  },
+  "context_score": 73,
+  "prediction_context": {
+    "wafer_id": "C64_1026",
+    "predicted_c65": 1210.0,
+    "shap_top3": [
+      "C62",
+      "C11",
+      "C31"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C62",
+        "rule": "N1"
+      }
+    ]
+  }
+}

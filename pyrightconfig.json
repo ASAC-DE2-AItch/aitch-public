@@ -1,0 +1,18 @@
+{
+  "extraPaths": [
+    ".",
+    "src",
+    "src/agent_a_mlops",
+    "src/agent_a_mlops/lean85",
+    "src/agent_a_mlops/Autoencoder"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/lean85env",
+    "**/node_modules"
+  ],
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
+  "reportMissingImports": "warning"
+}

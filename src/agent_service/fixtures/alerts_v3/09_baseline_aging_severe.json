@@ -1,0 +1,47 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH1-0009",
+  "timestamp": "2026-07-13T10:08:00.000Z",
+  "chamber_id": "SIM_CH_1",
+  "violations": [
+    {
+      "rule_id": "N3",
+      "sensor": "C62",
+      "sensor_name": "RF_Vpp",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "N3: 6점 창 (W0..W5)",
+      "current_value": 2003.5,
+      "limit_version": "v1",
+      "control_limit_upper": 1965.0,
+      "control_limit_lower": 1635.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 0.7,
+    "top_gap_sensor": "C62",
+    "gap_pct": 0.8,
+    "reference_suspect": false
+  },
+  "context_score": 90,
+  "prediction_context": {
+    "wafer_id": "C64_1008",
+    "predicted_c65": 715.2,
+    "shap_top3": [
+      "C62",
+      "C17",
+      "C11"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C62",
+        "rule": "N3"
+      }
+    ]
+  },
+  "suspect_window": {
+    "start_wafer": "C64_1002",
+    "end_wafer": "C64_1008",
+    "basis": "추세 룰 시작점 소급"
+  }
+}

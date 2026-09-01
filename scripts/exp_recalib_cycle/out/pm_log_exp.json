@@ -1,0 +1,20 @@
+[
+  {
+    "date": "2018-12-24 00:00:00",
+    "type": "major",
+    "verdict": "loud",
+    "source": "pm_log.json (실측)"
+  },
+  {
+    "date": "2019-04-22 03:00:00",
+    "type": "major",
+    "verdict": "loud",
+    "source": "pm_ledger.csv (합성)"
+  },
+  {
+    "date": "2019-08-20 03:00:00",
+    "type": "major",
+    "verdict": "loud",
+    "source": "pm_ledger.csv (합성)"
+  }
+]

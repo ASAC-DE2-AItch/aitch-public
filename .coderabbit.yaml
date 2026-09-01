@@ -1,0 +1,53 @@
+# CodeRabbit Configuration
+# Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: ko-KR
+
+reviews:
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_instructions:
+    - path: "src/agent_a_mlops/**"
+      instructions: |
+        이 디렉토리는 팀원 A(MLOps Engineer)의 실시간 추론 파이프라인입니다.
+        - models/ 디렉토리의 .joblib/.pth 파일을 joblib.load()/torch.load()로 로드하여 추론해야 합니다.
+        - 모델을 직접 학습(fit)하는 코드는 CT 재학습 플래그 조건 하에서만 허용됩니다.
+        - fdc.prediction 토픽으로 발행 시 wafer_id, c65_predicted, drift_score, shap_top3 필드는 필수입니다.
+
+    - path: "src/agent_b_spc/**"
+      instructions: |
+        이 디렉토리는 팀원 B(Smart SPC Engineer)의 Nelson Rule 엔진입니다.
+        - fdc.alert 토픽으로 발행 시 wafer_id, chamber_id, rule_id, severity, context_score 필드는 필수입니다.
+        - fdc.alert는 팀원 C와 D가 병렬 구독하는 단일 경보 채널입니다. 스키마를 함부로 변경하지 마세요.
+
+    - path: "src/agent_c_r2r/**"
+      instructions: |
+        이 디렉토리는 팀원 C(R2R Copilot Agent)의 EWMA 보정 + RAG 검색 파이프라인입니다.
+        - Human-in-the-Loop 원칙: Recipe 변경을 직접 실행하는 코드는 절대 금지입니다.
+        - LLM 응답은 반드시 JSON 포맷을 강제하고, 파싱 실패 시 재시도해야 합니다.
+
+    - path: "src/agent_d_manual/**"
+      instructions: |
+        이 디렉토리는 팀원 D(Maintenance Copilot Agent)의 수리 매뉴얼 RAG 파이프라인입니다.
+        - Human-in-the-Loop 원칙: 장비 정비를 직접 실행하는 코드는 절대 금지입니다.
+        - LLM 응답은 반드시 JSON 포맷을 강제하고, 파싱 실패 시 재시도해야 합니다.
+
+    - path: "db/**"
+      instructions: |
+        DB 스키마 변경은 PM/PO 승인이 필수입니다.
+        기존 컬럼의 이름 변경이나 삭제는 금지됩니다. 컬럼 추가만 허용됩니다.
+
+    - path: "docs/**"
+      instructions: |
+        문서 변경은 PM/PO 승인이 필수입니다.
+        API Contract 명세서 변경 시 관련 코드도 같은 PR에서 업데이트되었는지 확인하세요.
+
+chat:
+  auto_reply: true

@@ -1,0 +1,20 @@
+# 프론트 이미지 빌드 컨텍스트 제외 (인프라 스텝 1)
+#
+# ⚠️ 이 파일은 **빌드 컨텍스트가 `frontend/` 일 때만** 읽힌다. 리포 루트의 `.dockerignore`
+#    는 `frontend/` 를 통째로 제외하고 있는데, 그건 agent_service·b-spc·a-pred 이미지가
+#    프론트를 안 쓰기 때문이다. 프론트 이미지는 컨텍스트를 `frontend/` 로 좁혀 빌드하므로
+#    두 파일이 충돌하지 않는다 (compose 의 `context: ./frontend`).
+
+node_modules/
+dist/
+
+# tsc -b 의 증분 캐시. 이미지에 들어가면 컨테이너 안에서 "이미 빌드됨"으로 착각해
+# 타입체크를 건너뛸 수 있다 — 리포에 커밋돼 있어 명시적으로 자른다.
+tsconfig.tsbuildinfo
+
+# 빌드에 안 쓰는 것들
+tools/
+*.md
+.env
+.env.*
+!.env.example

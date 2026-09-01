@@ -1,0 +1,458 @@
+{
+  "generated_at_utc": "2026-08-04 06:24:05",
+  "tag": "main",
+  "run_manifest": {
+    "generated_at_utc": "2026-08-03 05:16:24",
+    "tag": "main",
+    "seed": 42,
+    "buffer_days": 0,
+    "protocol": "rolling-origin (설계서 §4)",
+    "eval_window": [
+      "2019-02-09",
+      "2019-11-30"
+    ],
+    "n_eval_days": 295,
+    "n_retrain_nominal": {
+      "ARM-D1": 295,
+      "ARM-D7": 43,
+      "ARM-STATIC": 0
+    },
+    "n_distinct_fits": 295,
+    "train_window_days": 365,
+    "time_axis": "C40 실측 타임스탬프 (사전 등록 균등 근사를 대체 — 부록 A-6 v1.1)",
+    "features_n": 85,
+    "features_sha1": "3d1e5124fad4",
+    "n_estimators": 246,
+    "params": {
+      "learning_rate": 0.027015944979119196,
+      "max_depth": 4,
+      "min_child_weight": 6.891957479431703,
+      "subsample": 0.8181242434283986,
+      "colsample_bytree": 0.8782954149928492,
+      "reg_alpha": 0.07630553997211231,
+      "reg_lambda": 0.05392394823978756,
+      "gamma": 2.353287110798049
+    },
+    "total_fit_sec": 1011.1,
+    "mean_fit_sec": 3.43,
+    "wall_clock_sec": 1051.7,
+    "gate_applied": false,
+    "gate_note": "설계서 §3 — 주 분석은 무조건 교체. 게이트 시나리오는 §8-A 부속 분석",
+    "n_probe_wafers": 500,
+    "wafer_day_map_sha1": "12593a4834ba42acf6ddcf233a0b5637267d279b",
+    "pm_log_exp": [
+      {
+        "date": "2018-12-24 00:00:00",
+        "type": "major",
+        "verdict": "loud",
+        "source": "pm_log.json (실측)"
+      },
+      {
+        "date": "2019-04-22 03:00:00",
+        "type": "major",
+        "verdict": "loud",
+        "source": "pm_ledger.csv (합성)"
+      },
+      {
+        "date": "2019-08-20 03:00:00",
+        "type": "major",
+        "verdict": "loud",
+        "source": "pm_ledger.csv (합성)"
+      }
+    ],
+    "env": {
+      "python": "3.14.3",
+      "xgboost": "3.3.0",
+      "pandas": "3.0.3",
+      "numpy": "2.4.6",
+      "platform": "Windows-11-10.0.26200-SP0"
+    },
+    "note": "오프라인 백테스트 — models/ 등재·CHANGELOG 기록 대상 아님 (설계서 §4)"
+  },
+  "M1": {
+    "ARM-D1": {
+      "pooled_rmse": 54.796,
+      "honest_r2": 0.9562,
+      "n_wafers": 68349
+    },
+    "ARM-D7": {
+      "pooled_rmse": 70.853,
+      "honest_r2": 0.9267,
+      "n_wafers": 68349
+    },
+    "ARM-STATIC": {
+      "pooled_rmse": 334.237,
+      "honest_r2": -0.6312,
+      "n_wafers": 68349
+    }
+  },
+  "M2": {
+    "onset_major": {
+      "ARM-D1": 79.45,
+      "ARM-D7": 83.781,
+      "ARM-STATIC": 194.77,
+      "n_wafers": 6687
+    },
+    "onset_minor": {
+      "ARM-D1": 62.308,
+      "ARM-D7": 96.39,
+      "ARM-STATIC": 377.406,
+      "n_wafers": 6132
+    },
+    "steady": {
+      "ARM-D1": 50.069,
+      "ARM-D7": 65.634,
+      "ARM-STATIC": 342.354,
+      "n_wafers": 55530
+    }
+  },
+  "M2_warmup": {
+    "warmup_7d": {
+      "ARM-D1": 114.191,
+      "ARM-D7": 334.375,
+      "ARM-STATIC": 334.375
+    },
+    "excl_warmup": {
+      "ARM-D1": 53.078,
+      "ARM-D7": 55.215,
+      "ARM-STATIC": 334.234
+    }
+  },
+  "M3": {
+    "ARM-D7": {
+      "0": {
+        "rmse": 59.298,
+        "n": 10349
+      },
+      "1": {
+        "rmse": 52.56,
+        "n": 9987
+      },
+      "2": {
+        "rmse": 67.105,
+        "n": 10067
+      },
+      "3": {
+        "rmse": 78.597,
+        "n": 9197
+      },
+      "4": {
+        "rmse": 78.376,
+        "n": 8879
+      },
+      "5": {
+        "rmse": 74.516,
+        "n": 10121
+      },
+      "6": {
+        "rmse": 82.442,
+        "n": 9749
+      }
+    },
+    "ARM-D1": {
+      "0": {
+        "rmse": 54.796,
+        "n": 68349
+      }
+    },
+    "weekday_confound": {
+      "age_to_weekday": {
+        "0": [
+          5
+        ],
+        "1": [
+          6
+        ],
+        "2": [
+          0
+        ],
+        "3": [
+          1
+        ],
+        "4": [
+          2
+        ],
+        "5": [
+          3
+        ],
+        "6": [
+          4
+        ]
+      },
+      "confounded": true,
+      "note": "각 model_age 가 단일 요일에 고정되면 M3 곡선은 열화와 요일 효과의 합이다 — 기울기를 열화로만 해석하지 말 것"
+    },
+    "weekday_adjusted": {
+      "by_age": {
+        "0": {
+          "d7_rmse": 58.887,
+          "d1_same_weekday_rmse": 58.887,
+          "degradation": 0.0,
+          "n": 10126
+        },
+        "1": {
+          "d7_rmse": 52.139,
+          "d1_same_weekday_rmse": 51.276,
+          "degradation": 0.863,
+          "n": 9898
+        },
+        "2": {
+          "d7_rmse": 54.3,
+          "d1_same_weekday_rmse": 52.609,
+          "degradation": 1.69,
+          "n": 9900
+        },
+        "3": {
+          "d7_rmse": 56.724,
+          "d1_same_weekday_rmse": 55.765,
+          "degradation": 0.958,
+          "n": 9020
+        },
+        "4": {
+          "d7_rmse": 54.262,
+          "d1_same_weekday_rmse": 52.252,
+          "degradation": 2.01,
+          "n": 8700
+        },
+        "5": {
+          "d7_rmse": 52.592,
+          "d1_same_weekday_rmse": 49.217,
+          "degradation": 3.375,
+          "n": 9941
+        },
+        "6": {
+          "d7_rmse": 57.281,
+          "d1_same_weekday_rmse": 50.87,
+          "degradation": 6.411,
+          "n": 9525
+        }
+      },
+      "warmup_excluded": true,
+      "age0_identity_check": true,
+      "method": "D7(age) − D1(같은 요일) — D1 은 항상 age 0 이라 요일 효과만 담는다. age 0 의 차이가 0 이면 분해가 성립한다는 확인 지점"
+    }
+  },
+  "M4": {
+    "ARM-D1": {
+      "n_version_pairs": 294,
+      "mean_probe_mae": 2.322,
+      "median_probe_mae": 1.202,
+      "p95_probe_mae": 2.832
+    },
+    "ARM-D7": {
+      "n_version_pairs": 42,
+      "mean_probe_mae": 8.212,
+      "median_probe_mae": 1.402,
+      "p95_probe_mae": 5.159
+    },
+    "note": "고정 프로브 500 wafer · 인접 모델 버전 간 예측 MAE (C65 단위)"
+  },
+  "M6": {
+    "ARM-D1": {
+      "n_retrain": 295,
+      "mean_fit_sec": 3.43,
+      "total_hours": 0.281,
+      "basis": "해당 군 컷오프의 실측 fit_sec 합계"
+    },
+    "ARM-D7": {
+      "n_retrain": 43,
+      "mean_fit_sec": 3.37,
+      "total_hours": 0.04,
+      "basis": "해당 군 컷오프의 실측 fit_sec 합계"
+    },
+    "ARM-STATIC": {
+      "n_retrain": 0,
+      "mean_fit_sec": 0.0,
+      "total_hours": 0.0,
+      "basis": "재학습 없음"
+    },
+    "ratio_D1_over_D7": 6.86,
+    "ratio_hours_D1_over_D7": 7.03,
+    "all_fits_mean_sec": 3.43,
+    "note": "군별 실제 컷오프의 wall-clock 실측 합계 (M6 정의는 부록 A-5)"
+  },
+  "stats": {
+    "D1_vs_D7": {
+      "n_pairs": 295,
+      "statistic": 9497.0,
+      "p_value": 2.6691304538024725e-08,
+      "significant": true
+    },
+    "STATIC_vs_D7": {
+      "n_pairs": 295,
+      "statistic": 80.0,
+      "p_value": 1.2867899622974129e-48,
+      "significant": true
+    },
+    "delta_daily_rmse_D7_minus_D1": {
+      "mean": 6.3341,
+      "ci95": [
+        0.5533,
+        15.4126
+      ],
+      "method": "moving-block bootstrap (block=7d, B=5000)",
+      "excludes_zero": true
+    }
+  },
+  "sensitivity_excl_warmup": {
+    "excl_warmup_days": 7,
+    "n_days": 288,
+    "M1": {
+      "ARM-D1": 53.078,
+      "ARM-D7": 55.215,
+      "ARM-STATIC": 334.234
+    },
+    "M2": {
+      "onset_major": {
+        "ARM-D1": 79.45,
+        "ARM-D7": 83.781,
+        "ARM-STATIC": 194.77,
+        "n_wafers": 6687
+      },
+      "onset_minor": {
+        "ARM-D1": 41.587,
+        "ARM-D7": 46.563,
+        "ARM-STATIC": 381.35,
+        "n_wafers": 5699
+      },
+      "steady": {
+        "ARM-D1": 50.035,
+        "ARM-D7": 51.529,
+        "ARM-STATIC": 342.369,
+        "n_wafers": 54724
+      }
+    },
+    "stats": {
+      "D1_vs_D7": {
+        "n_pairs": 288,
+        "statistic": 9497.0,
+        "p_value": 3.465606517910901e-07,
+        "significant": true
+      },
+      "STATIC_vs_D7": {
+        "n_pairs": 288,
+        "statistic": 80.0,
+        "p_value": 1.2867899622974129e-48,
+        "significant": true
+      }
+    },
+    "daily_win": {
+      "n_days": 288,
+      "d1_better_days": 147,
+      "d1_win_rate_pct": 51.04,
+      "delta_median": 0.0021,
+      "delta_mean": 1.3759,
+      "note": "pooled 는 제곱 가중이라 소수의 대형 오차일에 끌려간다. 승률과 중앙값이 평시 실력 차를 더 정직하게 보여준다"
+    },
+    "verdict_if_excluded": {
+      "rule": "R1",
+      "call": "일간 유지 확정 — 실증 종결, 멘토 보고. D1 이 D7 대비 pooled RMSE 3.87% 개선 + 유의(α=0.05).",
+      "pooled_rel_gain_pct_D1_over_D7": 3.87,
+      "onset_major_rel_gain_pct": 5.169,
+      "significant_D1_vs_D7": true,
+      "significant_STATIC_vs_D7": true,
+      "thresholds": {
+        "R1_min_rel_gain_pct✱": 2.0,
+        "R3_onset_min_rel_gain_pct✱": 5.0,
+        "alpha": 0.05
+      },
+      "note": "✱ 임계는 사전 등록 제안값 — PM·멘토 확정 대상 (결과 보고서 부록 A-4)"
+    },
+    "why": "워밍업 구간에서는 D7·STATIC 이 아직 M0 를 쓴다 — 이 며칠의 대형 오차가 pooled 에 제곱으로 실려 D1 우위를 과대 표시할 수 있다 — 사전 등록한 이음새 단차 민감도다 (부록 A-5)"
+  },
+  "gate_sim_8A": {
+    "ARM-D1": {
+      "arm": "ARM-D1",
+      "n_triggers": 294,
+      "n_judged": 294,
+      "n_promoted": 31,
+      "promote_rate_pct": 10.54,
+      "threshold_pct": 3.0,
+      "gain_pct_mean": 0.956,
+      "gain_pct_median": 0.194,
+      "gain_pct_p95": 4.83,
+      "max_champion_age_days": 92,
+      "decisions": {
+        "keep": 263,
+        "promote": 31,
+        "initial": 1
+      },
+      "eval_set": "챌린저 담당일 웨이퍼 (챔피언·챌린저 모두 out-of-sample)",
+      "caveat": "사후 소급 판정 — 운영 게이트는 결정 시점에 이 라벨을 가질 수 없다"
+    },
+    "ARM-D7": {
+      "arm": "ARM-D7",
+      "n_triggers": 42,
+      "n_judged": 42,
+      "n_promoted": 8,
+      "promote_rate_pct": 19.05,
+      "threshold_pct": 3.0,
+      "gain_pct_mean": 4.349,
+      "gain_pct_median": 0.084,
+      "gain_pct_p95": 7.446,
+      "max_champion_age_days": 119,
+      "decisions": {
+        "keep": 34,
+        "promote": 8,
+        "initial": 1
+      },
+      "eval_set": "챌린저 담당일 웨이퍼 (챔피언·챌린저 모두 out-of-sample)",
+      "caveat": "사후 소급 판정 — 운영 게이트는 결정 시점에 이 라벨을 가질 수 없다"
+    }
+  },
+  "verdict": {
+    "rule": "R1",
+    "call": "일간 유지 확정 — 실증 종결, 멘토 보고. D1 이 D7 대비 pooled RMSE 22.66% 개선 + 유의(α=0.05).",
+    "pooled_rel_gain_pct_D1_over_D7": 22.662,
+    "onset_major_rel_gain_pct": 5.169,
+    "significant_D1_vs_D7": true,
+    "significant_STATIC_vs_D7": true,
+    "thresholds": {
+      "R1_min_rel_gain_pct✱": 2.0,
+      "R3_onset_min_rel_gain_pct✱": 5.0,
+      "alpha": 0.05
+    },
+    "note": "✱ 임계는 사전 등록 제안값 — PM·멘토 확정 대상 (결과 보고서 부록 A-4)"
+  },
+  "threshold_sensitivity": {
+    "current_threshold_pct✱": 2.0,
+    "gain_incl_warmup_pct": 22.662,
+    "gain_excl_warmup_pct": 3.87,
+    "flip_threshold_incl_warmup_pct": 22.66,
+    "flip_threshold_excl_warmup_pct": 3.87,
+    "grid": [
+      {
+        "threshold_pct": 2.0,
+        "rule_incl_warmup": "R1",
+        "rule_excl_warmup": "R1"
+      },
+      {
+        "threshold_pct": 3.0,
+        "rule_incl_warmup": "R1",
+        "rule_excl_warmup": "R1"
+      },
+      {
+        "threshold_pct": 4.0,
+        "rule_incl_warmup": "R1",
+        "rule_excl_warmup": "R1 외(R2/R3)"
+      },
+      {
+        "threshold_pct": 5.0,
+        "rule_incl_warmup": "R1",
+        "rule_excl_warmup": "R1 외(R2/R3)"
+      },
+      {
+        "threshold_pct": 10.0,
+        "rule_incl_warmup": "R1",
+        "rule_excl_warmup": "R1 외(R2/R3)"
+      }
+    ],
+    "note": "임계가 워밍업 제외 개선폭(3.87%)을 넘어서면 주 판정이 R1 에서 벗어난다. 임계는 결과를 본 뒤에 조정하지 않는다 — 조정이 필요하면 이 표를 근거로 공개 논의한다 (사전 등록 원칙 — 부록 A-4)"
+  },
+  "figures": [
+    "fig_M3_degradation.png",
+    "fig_M5_timeseries.png",
+    "fig_M2_segments.png",
+    "fig_M6_cost.png"
+  ]
+}

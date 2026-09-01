@@ -1,0 +1,58 @@
+{
+  "alert_id": "ALERT-20260713-SIMCH3-0043",
+  "timestamp": "2026-07-13T10:42:00.000Z",
+  "chamber_id": "SIM_CH_3",
+  "violations": [
+    {
+      "rule_id": "N1",
+      "sensor": "C31",
+      "sensor_name": "RF_Forward",
+      "window": "transient",
+      "severity": "CRITICAL",
+      "description": "single point beyond 3σ",
+      "current_value": 339.6,
+      "limit_version": "v1",
+      "control_limit_upper": 314.0,
+      "control_limit_lower": 266.0
+    },
+    {
+      "rule_id": "N3",
+      "sensor": "C11",
+      "sensor_name": "DC_Bias",
+      "window": "settled",
+      "severity": "WARNING",
+      "description": "6 points continuously increasing",
+      "current_value": -273.0,
+      "limit_version": "v1",
+      "control_limit_upper": -280.0,
+      "control_limit_lower": -340.0
+    }
+  ],
+  "tttm": {
+    "reference": "fleet_median",
+    "score": 3.1,
+    "top_gap_sensor": "C31",
+    "gap_pct": 7.2,
+    "reference_suspect": false
+  },
+  "context_score": 78,
+  "prediction_context": {
+    "wafer_id": "C64_1042",
+    "predicted_c65": 980.0,
+    "shap_top3": [
+      "C31",
+      "C11",
+      "C62"
+    ],
+    "spc_flags": [
+      {
+        "sensor": "C31",
+        "rule": "N1"
+      },
+      {
+        "sensor": "C11",
+        "rule": "N3"
+      }
+    ]
+  }
+}

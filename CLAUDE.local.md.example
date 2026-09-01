@@ -1,0 +1,17 @@
+# CLAUDE.local.md — 개인 설정 (커밋 안 됨)
+
+> 이 파일을 `CLAUDE.local.md`로 복사해서 자유롭게 편집하세요.
+> `.gitignore`에 등록되어 있어 커밋되지 않습니다. 팀 규약 변경은 CLAUDE.md PR로 제안하세요.
+
+## 내 담당 분야
+
+- 팀원 X: src/agent_X/
+
+## 자주 쓰는 명령
+
+- pytest tests/test_agent_X.py -v
+- docker compose up kafka postgres qdrant -d
+
+## 현재 작업 메모
+
+- (이슈 번호 · 브랜치명 · TODO 등 자유 기록)
