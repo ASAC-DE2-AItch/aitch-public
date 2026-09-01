@@ -12,7 +12,7 @@
                  + 같은 wafer의 덤프 피처와 diff Top12 출력 (범인 채널 지목)
 
 실행 (반드시 _ae_lab에서 — 실험실 사본의 ae_pipeline 사용):
-  cd C:\\Users\\HP\\Downloads\\SK하이닉스\\_ae_lab
+  cd <레포 루트>\\_ae_lab
   python ..\\scripts\\diag_ae_serving.py offline
   python ..\\scripts\\diag_ae_serving.py live
 

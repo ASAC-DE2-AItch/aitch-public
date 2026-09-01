@@ -77,7 +77,7 @@ log = logging.getLogger("prediction-sink")
 
 KAFKA_BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform")
+    "DATABASE_URL", "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform")
 CONSUMER_GROUP = "consumer-group-db-sink"
 TOPIC_PRED = "fdc.prediction"
 TOPIC_ACTUAL = "fdc.actual"

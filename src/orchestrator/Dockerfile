@@ -2,7 +2,7 @@
 # orchestrator — Incident 그루퍼 컨테이너 이미지
 #
 # ⚠ `src/orchestrator/` 는 PM/PO 소유(헌법 3-1). 이 파일은 PM 이 PR #121 본문에서
-#   "PM 소유 디렉토리 Dockerfile — 승인. 컨테이너화 전체를 은비 주도로(작성 은비, 리뷰 PM)"
+#   "PM 소유 디렉토리 Dockerfile — 승인. 컨테이너화 전체를 팀원 C 주도로(작성 팀원 C, 리뷰 PM)"
 #   라고 위임한 범위에서 작성했다. **리뷰는 PM.**
 #
 # 빌드는 **repo 루트에서** 한다 (코드가 `python -m src.orchestrator.incident_grouper` 로

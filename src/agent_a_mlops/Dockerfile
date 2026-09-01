@@ -2,7 +2,7 @@
 # agent_a_mlops — 예측 컨슈머(a-pred) 컨테이너 이미지
 #
 # ⚠ `src/agent_a_mlops/` 는 팀원 A 소유(헌법 3-1). PR #121 에서 PM 이 컨테이너화 전체를
-#   은비 주도로 위임했고(작성 은비·리뷰 소유자), 그 답에서 a-pred 포함을 밝혔다. **리뷰는 A.**
+#   팀원 C 주도로 위임했고(작성 팀원 C·리뷰 소유자), 그 답에서 a-pred 포함을 밝혔다. **리뷰는 A.**
 #
 # 빌드는 **repo 루트에서** 한다:
 #     docker build -f src/agent_a_mlops/Dockerfile -t aitch-a-pred:p1 .

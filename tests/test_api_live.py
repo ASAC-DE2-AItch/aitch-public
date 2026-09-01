@@ -4,7 +4,7 @@
 내 샌드박스엔 fastapi/PG 불가라 미실행. **사용자 env에서 (docker PG + deps + DATABASE_URL):**
 
     pip install "fastapi[standard]"      # TestClient(httpx) 포함
-    $env:DATABASE_URL = "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+    $env:DATABASE_URL = "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
     python tests/test_api_live.py
 
 → 출력 붙여주면 진단. 검증: /health · seed→트리거→/approvals/pending 노출 → POST approve → DB 반영 ·

@@ -274,7 +274,7 @@ class DemoResetRunner:
             if src:
                 dsn = os.environ.get(
                     "DATABASE_URL",
-                    "postgresql://fdc_admin:fdc_pass_2026@postgres:5432/fdc_platform")
+                    "postgresql://fdc_admin:change-me@postgres:5432/fdc_platform")
                 argv = ["docker", "run", "--rm", "-v", f"{src}:/app", "-w", "/app",
                         "-e", f"DATABASE_URL={dsn}",
                         "aitch-spc:b6-2",

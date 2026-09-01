@@ -6,7 +6,7 @@
       [wafer, chamber, idx(챔버 내 시간순), ae_raw, ae_score, ae_drift]
 
 실행 (_ae_lab에서 — 실험실 사본의 ae_pipeline 사용):
-  cd C:\\Users\\HP\\Downloads\\SK하이닉스\\_ae_lab
+  cd <레포 루트>\\_ae_lab
   python -W "ignore::FutureWarning" ..\\scripts\\score_full_curve.py
 
 소요 ~2-4분(CPU). 읽기 전용 — 번들·DB 어떤 상태도 바꾸지 않는다.

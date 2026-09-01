@@ -7,7 +7,7 @@
     # ⚠ PG를 전에 띄운 적 있으면 볼륨에 구버전 스키마가 남아 init.sql이 재실행 안 됨 →
     #   docker-compose down -v ; docker-compose up -d postgres  (볼륨 초기화; dev DB라 안전)
     pip install langgraph langgraph-checkpoint-postgres "psycopg[binary]"
-    $env:DATABASE_URL = "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+    $env:DATABASE_URL = "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
     python tests/test_approval_graph_level2_pg.py
 
 → 출력 전체 붙여주면 진단·수정.

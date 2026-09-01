@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # 접속 정보는 배포마다 바뀌는 인프라 값이라 .env (params.yaml 은 알고리즘 값 — config.py 주석 참조).
 # 기본값은 docker-compose.yml 의 postgres 서비스와 일치시킨다.
 DSN_ENV = "AGENT_PG_DSN"
-_DEFAULT_DSN = "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+_DEFAULT_DSN = "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
 
 # 연결 타임아웃 (초) — **무중단의 핵심**. 없으면 Postgres 미기동 시 OS 기본 타임아웃(수십 초~분)
 # 까지 파이프라인이 멈춘다. "빈 결과로 진행"이 의미가 있으려면 빨리 포기해야 한다.

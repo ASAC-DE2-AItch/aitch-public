@@ -83,7 +83,7 @@ KAFKA_TOPIC_ALERT=fdc.alert
 
 DB 도 필요하다(그루퍼 적재 + Brief 적재):
 ```bash
-DATABASE_URL=postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform
+DATABASE_URL=postgresql://fdc_admin:change-me@localhost:5432/fdc_platform
 ```
 
 실행 (터미널 2개):

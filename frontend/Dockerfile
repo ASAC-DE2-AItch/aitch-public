@@ -2,7 +2,7 @@
 # frontend — React 정적 빌드 + nginx 진입 (인프라 스텝 1)
 #
 # ⚠ `frontend/` 는 PM/PO 소유(헌법 3-1, 2026-07-31 등재). PR #121 에서 컨테이너화 전체를
-#   은비 주도로 위임받은 범위에서 작성했다. **리뷰는 PM.**
+#   팀원 C 주도로 위임받은 범위에서 작성했다. **리뷰는 PM.**
 #   **`frontend/src/` 는 한 글자도 건드리지 않는다** — 신규 파일 3개(Dockerfile·.dockerignore·
 #   nginx/default.conf.template)뿐이라 `feat/front-intro-overview` 작업과 충돌하지 않는다
 #   (그 브랜치가 고치는 21파일은 전부 `src/`·`tools/` 이고 빌드 설정은 무변경 — 대조 확인함).

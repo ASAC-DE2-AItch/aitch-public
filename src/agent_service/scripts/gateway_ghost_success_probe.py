@@ -46,7 +46,7 @@ A·B 모두 `get_state(cfg).next == ()` 다 — *"다음에 실행할 노드가 
 
 ## 실행
 
-    $env:DATABASE_URL="postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+    $env:DATABASE_URL="postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
     python gateway_ghost_success_probe.py
 
 관련: `ct2_resume_probe.py` — LangGraph 레벨 5단계(닫힌 thread resume 이 no-op·재-invoke 만 가능)
@@ -74,7 +74,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "tests"))       # FakeStore 재사용
 
 DSN = os.environ.get(
-    "DATABASE_URL", "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+    "DATABASE_URL", "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
 )
 NEVER = "INC-PROBE-NEVER-STARTED"                  # 케이스 A — 한 번도 invoke 하지 않음
 CLOSED = "INC-PROBE-CLOSED"                        # 케이스 B — 승인 완료로 닫힘

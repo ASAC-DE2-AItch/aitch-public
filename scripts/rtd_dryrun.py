@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 from src.orchestrator import chamber_inhibit as ci
 
 ROOT = Path(__file__).resolve().parents[1]
-_DEFAULT_DSN = "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+_DEFAULT_DSN = "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
 
 
 def _load_params() -> dict:

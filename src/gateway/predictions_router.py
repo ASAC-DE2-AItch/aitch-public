@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform")
+    "DATABASE_URL", "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform")
 
 _COLS = ("wafer_id, chamber_id, lot_id, recipe_id, predicted_c65, actual_c65, measured_at, "
          "drift_score, anomaly_score, shap_top3, spc_flags, is_qual, model_version, created_at")

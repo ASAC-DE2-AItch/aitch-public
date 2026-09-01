@@ -4,7 +4,7 @@
 내 샌드박스엔 PG 불가라 미실행. **사용자 env에서 (docker PG up):**
 
     docker-compose up -d postgres        # (전에 띄운 적 있으면 down -v 후 up — 최신 스키마)
-    $env:DATABASE_URL = "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+    $env:DATABASE_URL = "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
     python tests/test_incident_grouper_level2_pg.py
 
 → 출력 붙여주면 진단. 검증: upsert(INSERT incidents/incident_alerts)·JOIN 병합 조회·%s::jsonb·ON CONFLICT 멱등.

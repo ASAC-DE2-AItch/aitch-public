@@ -22,7 +22,7 @@ Write-Host "[1/3] docker compose up -d (infra + topics + sink)..."
 #   The container is now the only c-agent. Re-adding the flag brings back zero-evidence Briefs.
 docker compose up -d
 
-$dsn = "postgresql://fdc_admin:fdc_pass_2026@localhost:5432/fdc_platform"
+$dsn = "postgresql://fdc_admin:change-me@localhost:5432/fdc_platform"
 
 $procs = @(
     # B-SPC removed - runs as compose service spc-consumer (B6-2). See NOTE above.
