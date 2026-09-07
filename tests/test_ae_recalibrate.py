@@ -19,6 +19,10 @@ from ae_pipeline import recalibrate as R  # noqa: E402
 GATE = {"min_val_wafers": 100, "min_gate_wafers": 100}
 
 
+@pytest.mark.skipif(
+    not (ROOT / "models" / "anomaly_ae" / "ae_v1" / "manifest.json").exists(),
+    reason="공개 스냅샷에는 AE 학습 아티팩트 번들(models/anomaly_ae/ae_v1)을 넣지 않는다 — 번들이 있는 환경에서만 검사한다.",
+)
 def test_base_bundle_is_complete_and_hashed():
     """번들 7파일 완결 + 바이너리 아티팩트 해시 일치 (PM 핫픽스 08/04 00:42).
 
