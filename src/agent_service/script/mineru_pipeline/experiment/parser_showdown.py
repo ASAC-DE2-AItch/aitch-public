@@ -23,7 +23,7 @@ MinerU=markdown), 공정한 비교를 위해 **동일 과제 = "페이지를 있
   exp_out/report.md     (점수표 + 페이지별 나란히보기)
 
 실행(반드시 ASCII 경로 venv로):
-  C:\\aitch-mineru-venv\\Scripts\\python.exe -m ...experiment.parser_showdown [--max-pages N] [--force]
+  <ASCII 경로 venv>/Scripts/python.exe -m ...experiment.parser_showdown [--max-pages N] [--force]
 사전조건: Ollama(qwen2.5vl:7b) 기동, tesseract·poppler 설치, mineru 설치.
 """
 from __future__ import annotations
