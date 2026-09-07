@@ -63,9 +63,9 @@ log = logging.getLogger("showdown")
 # --- 경로 설정 -----------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 EXP_OUT = HERE / "exp_out"
-MANUALS_DIR = Path(
-    r"C:\Users\cindy\OneDrive\문서\project\Bootcamp\sk-하이닉스\AITCH-r2r-c\Data\source_pdfs\manuals"
-)
+# 매뉴얼 PDF 위치. 저작권 때문에 저장소에 넣지 않으므로 환경변수 AITCH_MANUALS_DIR 로 받고,
+# 비어 있으면 스크립트 옆 source_pdfs/manuals 를 기본값으로 쓴다 (gitignore 대상).
+MANUALS_DIR = Path(os.environ.get("AITCH_MANUALS_DIR") or (HERE / "source_pdfs" / "manuals"))
 DOCS = [
     MANUALS_DIR / "oxford_sop.pdf",                              # 절차 위주(표 없음)
     MANUALS_DIR / "Operation-Spec-Oxford-System-100-Rev-C.pdf",  # 스펙/표 위주

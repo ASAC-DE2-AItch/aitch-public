@@ -18,3 +18,6 @@ inbox/
 
 # 실험 내부 MinerU 재파싱본(깊은 경로·중간산출물)
 _mineru/
+
+# 파서 비교 실험용 매뉴얼 PDF 원본 (AITCH_MANUALS_DIR 기본값 위치)
+experiment/source_pdfs/
