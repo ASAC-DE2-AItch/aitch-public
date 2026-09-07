@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.agent_service.app.tools.recipe import allowed_knobs
@@ -32,6 +33,12 @@ REPO = Path(__file__).resolve().parents[3]
 YAML_PATH = REPO / "config" / "recipe_knob_map.yaml"
 SEED_PATH = (REPO / "src" / "agent_service" / "rag_kb" / "process_knowledge"
              / "process_knowledge_tuning_seed.jsonl")
+
+
+requires_seed = pytest.mark.skipif(
+    not SEED_PATH.exists(),
+    reason="공개 스냅샷에는 tuning_axis 카드 seed JSONL 을 넣지 않는다 — 정본이 있는 환경에서만 3자 정합을 검사한다.",
+)
 
 
 def _yaml_active_knobs() -> set[str]:
@@ -48,6 +55,7 @@ def _card_records() -> list[dict]:
     return [json.loads(line) for line in SEED_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+@requires_seed
 def test_card_whitelist_matches_yaml_active_knobs() -> None:
     """카드에서 뽑은 런타임 화이트리스트 == yaml 의 active 손잡이.
 
@@ -57,6 +65,7 @@ def test_card_whitelist_matches_yaml_active_knobs() -> None:
     assert allowed_knobs(cards) == _yaml_active_knobs()
 
 
+@requires_seed
 def test_escalate_only_axes_are_not_in_whitelist() -> None:
     """yaml 이 escalate_only 로 내린 손잡이는 화이트리스트에 없어야 한다.
 
@@ -73,6 +82,7 @@ def test_escalate_only_axes_are_not_in_whitelist() -> None:
     assert not (allowed_knobs(cards) & escalate)
 
 
+@requires_seed
 def test_forbidden_sensors_are_not_knobs() -> None:
     """yaml `forbidden`(레짐 도장·모니터·타겟)은 어떤 경로로도 손잡이가 되면 안 된다."""
     km = yaml.safe_load(YAML_PATH.read_text(encoding="utf-8"))
